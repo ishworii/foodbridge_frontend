@@ -1,5 +1,3 @@
-// src/pages/DonationsPage.tsx
-
 import {
     Add as AddIcon,
     ExpandMore,
@@ -35,10 +33,10 @@ import {
 } from '@mui/material';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../api/axiosInstance';
+import donationService from '../api/donationService';
 import DeleteConfirmationDialog from '../components/DeleteConfirmationDialog';
 import DonationCard from '../components/DonationCard';
-import DonationsMap from '../components/DonationsMap';
+import DonationsMapLeaflet from '../components/DonationsMapLeaflet';
 import Layout from '../components/Layout';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SuccessNotification from '../components/SuccessNotification';
@@ -106,8 +104,7 @@ const DonationsPage: React.FC = () => {
   const fetchDonations = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.get('/donations/');
-      const data = response.data as Donation[];
+      const data = await donationService.getDonations();
       const sortedData = data.sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
@@ -145,7 +142,7 @@ const DonationsPage: React.FC = () => {
   const handleClaim = async (donationId: number) => {
     setError('');
     try {
-      await axiosInstance.post(`/donations/${donationId}/claim/`);
+      await donationService.claimDonation(donationId);
       await fetchDonations();
       setSuccessMessage('Donation claimed successfully!');
       setSuccessOpen(true);
@@ -170,7 +167,7 @@ const DonationsPage: React.FC = () => {
     setDeleteLoading(true);
     setError('');
     try {
-      await axiosInstance.delete(`/donations/${deletingDonation.id}/`);
+      await donationService.deleteDonation(deletingDonation.id);
       await fetchDonations();
       setSuccessMessage('Donation deleted successfully!');
       setSuccessOpen(true);
@@ -206,9 +203,9 @@ const DonationsPage: React.FC = () => {
     return R * c;
   };
 
-  // Check if donation expires within filter criteria
+  // Check if donation matches expiry filter
   const checkExpiryFilter = (donation: Donation): boolean => {
-    if (expiryFilter === 'all') return true;
+    if (!donation.expiry_date || expiryFilter === 'all') return true;
     
     const expiryDate = new Date(donation.expiry_date);
     const today = new Date();
@@ -269,6 +266,7 @@ const DonationsPage: React.FC = () => {
         case 'oldest':
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         case 'expiry':
+          if (!a.expiry_date || !b.expiry_date) return 0;
           return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
         case 'distance':
           if (!userLocation) return 0;
@@ -301,42 +299,29 @@ const DonationsPage: React.FC = () => {
         open={successOpen}
         message={successMessage}
         onClose={() => setSuccessOpen(false)}
-        autoHideDuration={6000}
       />
-
+      
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
         title="Delete Donation"
-        message={`Are you sure you want to delete "${deletingDonation?.title}"?`}
+        message={`Are you sure you want to delete "${deletingDonation?.title}"? This action cannot be undone.`}
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
         loading={deleteLoading}
       />
 
-      {/* Header Section */}
+      {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box>
-            <Typography 
-              variant="h4" 
-              component="h1" 
-              sx={{ 
-                fontWeight: 700, 
-                mb: 1,
-                color: theme.palette.text.primary,
-              }}
-            >
-              Food Donations
-            </Typography>
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                color: theme.palette.text.secondary,
-              }}
-            >
-              Connect with your community through food sharing
-            </Typography>
-          </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography 
+            variant="h4" 
+            sx={{ 
+              fontWeight: 600,
+              color: theme.palette.text.primary,
+            }}
+          >
+            Food Donations
+          </Typography>
           
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <ToggleButtonGroup
@@ -401,7 +386,7 @@ const DonationsPage: React.FC = () => {
       </Box>
 
       {/* Enhanced Filters Section */}
-      <Paper sx={{ p: 3, mb: 4 }}>
+      <Paper sx={{ mb: 3, p: 2 }}>
         <Accordion defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Typography 
@@ -470,6 +455,21 @@ const DonationsPage: React.FC = () => {
                 </FormControl>
 
                 <FormControl sx={{ minWidth: 150 }}>
+                  <InputLabel>Expiry</InputLabel>
+                  <Select
+                    value={expiryFilter}
+                    label="Expiry"
+                    onChange={(e) => setExpiryFilter(e.target.value)}
+                  >
+                    {expiryOptions.map(option => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl sx={{ minWidth: 150 }}>
                   <InputLabel>Sort By</InputLabel>
                   <Select
                     value={sortBy}
@@ -485,58 +485,28 @@ const DonationsPage: React.FC = () => {
                 </FormControl>
               </Box>
 
-              {/* Advanced Filters */}
-              <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
-                <FormControl sx={{ minWidth: 150 }}>
-                  <InputLabel>Expiry</InputLabel>
-                  <Select
-                    value={expiryFilter}
-                    label="Expiry"
-                    onChange={(e) => setExpiryFilter(e.target.value)}
-                  >
-                    {expiryOptions.map(option => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {userLocation && (
-                  <Box sx={{ minWidth: 200 }}>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      Distance: {distanceFilter} miles
-                    </Typography>
-                    <Slider
-                      value={distanceFilter}
-                      onChange={(e, value) => setDistanceFilter(value as number)}
-                      min={1}
-                      max={50}
-                      marks={[
-                        { value: 1, label: '1mi' },
-                        { value: 10, label: '10mi' },
-                        { value: 25, label: '25mi' },
-                        { value: 50, label: '50mi' },
-                      ]}
-                      valueLabelDisplay="auto"
-                    />
-                  </Box>
-                )}
-
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setStatusFilter('all');
-                    setFoodTypeFilter('all');
-                    setExpiryFilter('all');
-                    setDistanceFilter(10);
-                    setSortBy('newest');
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              </Box>
+              {/* Distance Filter */}
+              {userLocation && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Distance: {distanceFilter} miles
+                  </Typography>
+                  <Slider
+                    value={distanceFilter}
+                    onChange={(e, value) => setDistanceFilter(value as number)}
+                    min={1}
+                    max={50}
+                    marks={[
+                      { value: 1, label: '1 mi' },
+                      { value: 10, label: '10 mi' },
+                      { value: 25, label: '25 mi' },
+                      { value: 50, label: '50 mi' },
+                    ]}
+                    valueLabelDisplay="auto"
+                    sx={{ maxWidth: 400 }}
+                  />
+                </Box>
+              )}
             </Box>
           </AccordionDetails>
         </Accordion>
@@ -551,7 +521,7 @@ const DonationsPage: React.FC = () => {
 
       {/* Content - Map or List View */}
       {viewMode === 'map' ? (
-        <DonationsMap 
+        <DonationsMapLeaflet 
           donations={filteredAndSortedDonations}
           userLocation={userLocation}
           onClaim={handleClaim}
@@ -592,28 +562,11 @@ const DonationsPage: React.FC = () => {
               color: 'text.secondary',
             }}
           >
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                mb: 2,
-                color: theme.palette.text.primary,
-              }}
-            >
-              {searchTerm || statusFilter !== 'all' || foodTypeFilter !== 'all' || expiryFilter !== 'all'
-                ? 'No donations match your filters'
-                : 'No donations available at the moment'
-              }
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              No donations found
             </Typography>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: theme.palette.text.secondary,
-              }}
-            >
-              {searchTerm || statusFilter !== 'all' || foodTypeFilter !== 'all' || expiryFilter !== 'all'
-                ? 'Try adjusting your search terms or filters'
-                : 'Check back later or create a donation if you\'re a donor'
-              }
+            <Typography variant="body2">
+              Try adjusting your filters or create a new donation.
             </Typography>
           </Box>
         )
@@ -622,4 +575,4 @@ const DonationsPage: React.FC = () => {
   );
 };
 
-export default DonationsPage;
+export default DonationsPage; 
