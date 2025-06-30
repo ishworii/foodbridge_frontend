@@ -18,6 +18,7 @@ import {
     Typography
 } from '@mui/material';
 import React from 'react';
+import CountUp from 'react-countup';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -82,7 +83,7 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <Layout>
+    <Layout showFooter>
       {/* Hero Section */}
       <Box
         sx={{
@@ -263,7 +264,10 @@ const HomePage: React.FC = () => {
                 p: 3,
                 textAlign: 'center',
                 borderRadius: 3,
-                background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                background: (theme) => theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, #232526 0%, #414345 100%)'
+                  : 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                color: (theme) => theme.palette.mode === 'dark' ? 'white' : 'primary.main',
               }}
             >
               <Typography
@@ -271,11 +275,11 @@ const HomePage: React.FC = () => {
                 component="div"
                 sx={{
                   fontWeight: 700,
-                  color: 'primary.main',
+                  color: (theme) => theme.palette.mode === 'dark' ? 'white' : 'primary.main',
                   mb: 1,
                 }}
               >
-                {stat.number}
+                <CountUp end={parseInt(stat.number.replace(/[^\d]/g, ''))} duration={2} separator="," suffix={stat.number.replace(/\d+/g, '')} />
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {stat.label}

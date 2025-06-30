@@ -18,6 +18,7 @@ import {
   Typography,
 } from '@mui/material';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { Donation } from '../types';
 
@@ -35,6 +36,7 @@ const DonationCard: React.FC<DonationCardProps> = ({
   onDelete,
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -97,7 +99,13 @@ const DonationCard: React.FC<DonationCardProps> = ({
             color: 'text.primary',
             mb: 2,
             lineHeight: 1.3,
+            cursor: 'pointer',
+            '&:hover': {
+              color: 'primary.main',
+              textDecoration: 'underline',
+            },
           }}
+          onClick={() => navigate(`/donations/${donation.id}`)}
         >
           {donation.title}
         </Typography>
@@ -113,10 +121,67 @@ const DonationCard: React.FC<DonationCardProps> = ({
             WebkitLineClamp: 3,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
+            cursor: 'pointer',
+            '&:hover': {
+              color: 'text.primary',
+            },
           }}
+          onClick={() => navigate(`/donations/${donation.id}`)}
         >
-          {donation.description}
+          {/* Display rich text content safely with theme support */}
+          <Box
+            dangerouslySetInnerHTML={{
+              __html: donation.description.replace(/<[^>]*>/g, '').substring(0, 150) + '...'
+            }}
+            sx={{
+              color: 'inherit',
+              '& h1, & h2, & h3, & h4, & h5, & h6': {
+                color: 'inherit',
+                fontWeight: 600,
+                mb: 0.5,
+              },
+              '& p': {
+                color: 'inherit',
+                mb: 0.5,
+              },
+              '& ul, & ol': {
+                color: 'inherit',
+                pl: 1,
+                mb: 0.5,
+              },
+              '& li': {
+                color: 'inherit',
+                mb: 0.25,
+              },
+              '& strong, & b': {
+                color: 'inherit',
+                fontWeight: 600,
+              },
+              '& em, & i': {
+                color: 'inherit',
+                fontStyle: 'italic',
+              },
+            }}
+          />
         </Typography>
+
+        {/* Image Preview */}
+        {donation.image_url && (
+          <Box
+            component="img"
+            src={donation.image_url}
+            alt={donation.title}
+            sx={{
+              width: '100%',
+              height: 120,
+              objectFit: 'cover',
+              borderRadius: 1,
+              mb: 2,
+              cursor: 'pointer',
+            }}
+            onClick={() => navigate(`/donations/${donation.id}`)}
+          />
+        )}
 
         {/* Details Grid */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -135,6 +200,26 @@ const DonationCard: React.FC<DonationCardProps> = ({
               Quantity: {donation.quantity}
             </Typography>
           </Box>
+
+          {/* Food Type */}
+          {donation.food_type && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Restaurant sx={{ fontSize: 18, color: 'text.secondary' }} />
+              <Typography variant="body2" color="text.secondary">
+                Type: {donation.food_type.charAt(0).toUpperCase() + donation.food_type.slice(1)}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Expiry Date */}
+          {donation.expiry_date && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AccessTime sx={{ fontSize: 18, color: 'text.secondary' }} />
+              <Typography variant="body2" color="text.secondary">
+                Expires: {new Date(donation.expiry_date).toLocaleDateString()}
+              </Typography>
+            </Box>
+          )}
 
           {/* Time */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

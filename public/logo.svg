@@ -1,0 +1,19 @@
+<svg width="240" height="180" viewBox="0 0 240 180" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bridge arch -->
+  <path d="M30 120 Q120 40 210 120" stroke="#F57C00" stroke-width="10" fill="none" />
+
+  <!-- Bridge pillars -->
+  <line x1="60" y1="120" x2="60" y2="150" stroke="#F57C00" stroke-width="6" />
+  <line x1="120" y1="120" x2="120" y2="150" stroke="#F57C00" stroke-width="6" />
+  <line x1="180" y1="120" x2="180" y2="150" stroke="#F57C00" stroke-width="6" />
+
+  <!-- Burger on top -->
+  <!-- Top bun -->
+  <ellipse cx="120" cy="60" rx="20" ry="10" fill="#FBC02D" />
+  <!-- Lettuce -->
+  <rect x="100" y="65" width="40" height="6" fill="#66BB6A" />
+  <!-- Patty -->
+  <rect x="102" y="71" width="36" height="6" fill="#8D6E63" />
+  <!-- Bottom bun -->
+  <ellipse cx="120" cy="80" rx="20" ry="6" fill="#FBC02D" />
+</svg>

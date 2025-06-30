@@ -3,6 +3,9 @@ export interface User{
     username : string;
     email  : string;
     role : 'donor' | 'receiver';
+    date_joined: string;
+    last_login?: string;
+    avatar_url?: string;
 }
 
 export interface Donation{
@@ -19,6 +22,7 @@ export interface Donation{
     longitude?: number;
     food_type?: string;
     expiry_date?: string;
+    image_url?: string;
     is_claimed : boolean;
     claimed_by : number | null;
     created_at : string;

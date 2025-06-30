@@ -1,8 +1,7 @@
 import {
-    LockOutlined,
     Restaurant,
     Visibility,
-    VisibilityOff,
+    VisibilityOff
 } from '@mui/icons-material';
 import {
     Alert,
@@ -88,19 +87,16 @@ const LoginPage: React.FC = () => {
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Box
+              component="img"
+              src="/logo.svg"
+              alt="FoodBridge Logo"
               sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 64,
                 height: 64,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                width: 'auto',
                 mb: 2,
+                color: theme.palette.primary.main,
               }}
-            >
-              <LockOutlined sx={{ fontSize: 32, color: 'white' }} />
-            </Box>
+            />
             <Typography 
               variant="h4" 
               component="h1" 

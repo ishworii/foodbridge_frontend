@@ -1,6 +1,5 @@
 import {
     Add as AddIcon,
-    ExpandMore,
     FilterList as FilterIcon,
     ViewList as ListIcon,
     LocationOn as LocationIcon,
@@ -9,9 +8,6 @@ import {
     Search as SearchIcon
 } from '@mui/icons-material';
 import {
-    Accordion,
-    AccordionDetails,
-    AccordionSummary,
     Alert,
     Box,
     Button,
@@ -21,6 +17,7 @@ import {
     InputAdornment,
     InputLabel,
     MenuItem,
+    Pagination,
     Paper,
     Select,
     Slider,
@@ -29,7 +26,7 @@ import {
     ToggleButtonGroup,
     Tooltip,
     Typography,
-    useTheme,
+    useTheme
 } from '@mui/material';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -59,11 +56,17 @@ const DonationsPage: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Enhanced filters
-  const [distanceFilter, setDistanceFilter] = useState<number>(10); // miles
+  const [distanceFilter, setDistanceFilter] = useState<number>(100); // miles
   const [foodTypeFilter, setFoodTypeFilter] = useState<string>('all');
   const [expiryFilter, setExpiryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('newest');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [customDistance, setCustomDistance] = useState<string>('100');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10); // Fixed at 10 items per page
 
   const { user } = useAuth();
 
@@ -233,10 +236,9 @@ const DonationsPage: React.FC = () => {
   // Filter and sort donations
   const filteredAndSortedDonations = donations
     .filter(donation => {
+      // Basic search - only search by title
       const matchesSearch = 
-        donation.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        donation.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        donation.location.toLowerCase().includes(searchTerm.toLowerCase());
+        donation.title.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = 
         statusFilter === 'all' ||
@@ -281,6 +283,26 @@ const DonationsPage: React.FC = () => {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, foodTypeFilter, expiryFilter, distanceFilter, sortBy]);
+
+  // Handle custom distance input
+  const handleCustomDistanceChange = (value: string) => {
+    setCustomDistance(value);
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue > 0) {
+      setDistanceFilter(numValue);
+    }
+  };
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredAndSortedDonations.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedDonations = filteredAndSortedDonations.slice(startIndex, endIndex);
 
   const availableCount = donations.filter(d => !d.is_claimed).length;
   const claimedCount = donations.filter(d => d.is_claimed).length;
@@ -370,10 +392,17 @@ const DonationsPage: React.FC = () => {
             variant="outlined"
           />
           <Chip
-            label={`${filteredAndSortedDonations.length} Showing`}
+            label={`${filteredAndSortedDonations.length} Total`}
             color="info"
             variant="outlined"
           />
+          {viewMode === 'list' && totalPages > 1 && (
+            <Chip
+              label={`Page ${currentPage} of ${totalPages}`}
+              color="secondary"
+              variant="outlined"
+            />
+          )}
           {userLocation && (
             <Chip
               icon={<LocationIcon />}
@@ -385,47 +414,58 @@ const DonationsPage: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Enhanced Filters Section */}
-      <Paper sx={{ mb: 3, p: 2 }}>
-        <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1,
-                color: theme.palette.text.primary,
+      {/* Basic Search and Advanced Search Toggle */}
+      <Paper sx={{ mb: 3, p: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* Basic Search */}
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+            <TextField
+              placeholder="Search by donation title..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              helperText="Search by donation title only"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
               }}
+              sx={{ 
+                minWidth: 300, 
+                flex: 1,
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.palette.background.paper,
+                },
+              }}
+            />
+            
+            <Button
+              variant="outlined"
+              onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+              startIcon={<FilterIcon />}
+              sx={{ minWidth: 140 }}
             >
-              <FilterIcon />
-              Filters & Search
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Search and Basic Filters */}
+              {showAdvancedSearch ? 'Hide Advanced' : 'Advanced Search'}
+            </Button>
+          </Box>
+
+          {/* Advanced Search Section */}
+          {showAdvancedSearch && (
+            <Box sx={{ 
+              borderTop: '1px solid', 
+              borderColor: 'divider', 
+              pt: 3,
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 3 
+            }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Advanced Filters
+              </Typography>
+              
+              {/* Status and Food Type Filters */}
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                <TextField
-                  placeholder="Search donations..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ 
-                    minWidth: 300, 
-                    flex: 1,
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: theme.palette.background.paper,
-                    },
-                  }}
-                />
-                
                 <FormControl sx={{ minWidth: 150 }}>
                   <InputLabel>Status</InputLabel>
                   <Select
@@ -488,28 +528,42 @@ const DonationsPage: React.FC = () => {
               {/* Distance Filter */}
               {userLocation && (
                 <Box>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    Distance: {distanceFilter} miles
+                  <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                    Distance Filter
                   </Typography>
-                  <Slider
-                    value={distanceFilter}
-                    onChange={(e, value) => setDistanceFilter(value as number)}
-                    min={1}
-                    max={50}
-                    marks={[
-                      { value: 1, label: '1 mi' },
-                      { value: 10, label: '10 mi' },
-                      { value: 25, label: '25 mi' },
-                      { value: 50, label: '50 mi' },
-                    ]}
-                    valueLabelDisplay="auto"
-                    sx={{ maxWidth: 400 }}
-                  />
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Slider
+                      value={distanceFilter}
+                      onChange={(e, value) => setDistanceFilter(value as number)}
+                      min={1}
+                      max={200}
+                      marks={[
+                        { value: 1, label: '1 mi' },
+                        { value: 25, label: '25 mi' },
+                        { value: 50, label: '50 mi' },
+                        { value: 100, label: '100 mi' },
+                        { value: 200, label: '200 mi' },
+                      ]}
+                      valueLabelDisplay="auto"
+                      sx={{ maxWidth: 400, flex: 1 }}
+                    />
+                    <TextField
+                      label="Custom Distance"
+                      type="number"
+                      value={customDistance}
+                      onChange={(e) => handleCustomDistanceChange(e.target.value)}
+                      InputProps={{
+                        endAdornment: <Typography variant="caption">miles</Typography>,
+                      }}
+                      sx={{ width: 120 }}
+                      size="small"
+                    />
+                  </Box>
                 </Box>
               )}
             </Box>
-          </AccordionDetails>
-        </Accordion>
+          )}
+        </Box>
       </Paper>
 
       {/* Error Display */}
@@ -531,28 +585,51 @@ const DonationsPage: React.FC = () => {
       ) : (
         /* List View */
         filteredAndSortedDonations.length > 0 ? (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-                lg: 'repeat(4, 1fr)',
-              },
-              gap: 3,
-            }}
-          >
-            {filteredAndSortedDonations.map((donation) => (
-              <Box key={donation.id}>
-                <DonationCard
-                  donation={donation}
-                  onClaim={handleClaim}
-                  onEdit={handleEdit}
-                  onDelete={() => handleDelete(donation)}
+          <Box>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, 1fr)',
+                  md: 'repeat(3, 1fr)',
+                  lg: 'repeat(4, 1fr)',
+                },
+                gap: 3,
+                mb: 3,
+              }}
+            >
+              {paginatedDonations.map((donation) => (
+                <Box key={donation.id}>
+                  <DonationCard
+                    donation={donation}
+                    onClaim={handleClaim}
+                    onEdit={handleEdit}
+                    onDelete={() => handleDelete(donation)}
+                  />
+                </Box>
+              ))}
+            </Box>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                <Pagination
+                  count={totalPages}
+                  page={currentPage}
+                  onChange={(e, page) => setCurrentPage(page)}
+                  color="primary"
+                  size="large"
+                  showFirstButton
+                  showLastButton
+                  sx={{
+                    '& .MuiPaginationItem-root': {
+                      fontWeight: 600,
+                    },
+                  }}
                 />
               </Box>
-            ))}
+            )}
           </Box>
         ) : (
           <Box

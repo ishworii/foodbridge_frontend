@@ -1,9 +1,8 @@
 import {
     Person,
-    PersonAdd,
     Restaurant,
     Visibility,
-    VisibilityOff,
+    VisibilityOff
 } from '@mui/icons-material';
 import type { SelectChangeEvent } from '@mui/material';
 import {
@@ -143,19 +142,16 @@ const RegisterPage: React.FC = () => {
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Box
+              component="img"
+              src="/logo.svg"
+              alt="FoodBridge Logo"
               sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 64,
                 height: 64,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #ff6b35 0%, #e64a19 100%)',
+                width: 'auto',
                 mb: 2,
+                color: theme.palette.primary.main,
               }}
-            >
-              <PersonAdd sx={{ fontSize: 32, color: 'white' }} />
-            </Box>
+            />
             <Typography 
               variant="h4" 
               component="h1" 

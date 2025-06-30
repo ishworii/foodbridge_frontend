@@ -1,6 +1,10 @@
-import { Category, Close, LocationOn, Person, TrendingUp } from '@mui/icons-material';
-import { Box, Button, Card, CardContent, Chip, IconButton, Typography } from '@mui/material';
-import React, { useEffect, useRef, useState } from 'react';
+import { Category, Close, LocationOn, Person } from '@mui/icons-material';
+import { Box, Button, Card, CardContent, Chip, CircularProgress, IconButton, Typography } from '@mui/material';
+import { divIcon } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import React, { useCallback, useEffect, useState } from 'react';
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import donationService, { type DonationStatistics } from '../api/donationService';
 import type { Donation } from '../types';
 
@@ -12,17 +16,66 @@ interface DonationsMapLeafletProps {
   onDelete: (donation: Donation) => void;
 }
 
-interface DonationCluster {
-  center: [number, number];
+// Component to handle map events and statistics fetching
+const MapEventHandler: React.FC<{
+  onMapChange: () => void;
   donations: Donation[];
-  bounds: [[number, number], [number, number]];
-  stats: {
-    total: number;
-    available: number;
-    claimed: number;
-    foodTypes: { [key: string]: number };
-  };
-}
+  onMapReady: (map: any) => void;
+}> = ({ onMapChange, donations, onMapReady }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    onMapReady(map);
+  }, [map, onMapReady]);
+
+  useEffect(() => {
+    const handleMapChange = () => {
+      onMapChange();
+    };
+
+    map.on('zoomend', handleMapChange);
+    map.on('moveend', handleMapChange);
+
+    return () => {
+      map.off('zoomend', handleMapChange);
+      map.off('moveend', handleMapChange);
+    };
+  }, [map, onMapChange]);
+
+  return null;
+};
+
+// Helper for debouncing
+const useDebouncedCallback = (callback: (...args: any[]) => void, delay: number) => {
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  return useCallback((...args: any[]) => {
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      callback(...args);
+    }, delay);
+  }, [callback, delay]);
+};
+
+// Geocode location addresses to get coordinates
+const geocodeLocation = async (location: string): Promise<{ lat: number; lng: number } | null> => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`
+    );
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+};
 
 const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
   donations,
@@ -31,434 +84,171 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
-  const markerClusterGroup = useRef<any>(null);
   const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
-  const [selectedCluster, setSelectedCluster] = useState<DonationCluster | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentZoom, setCurrentZoom] = useState(10);
   const [statistics, setStatistics] = useState<DonationStatistics | null>(null);
-  const [mapBounds, setMapBounds] = useState<[[number, number], [number, number]] | null>(null);
+  const [currentZoom, setCurrentZoom] = useState(10);
+  const [mapInstance, setMapInstance] = useState<any>(null);
 
-  // Create clusters based on zoom level and geographic proximity
-  const createClusters = (donations: Donation[], zoom: number): DonationCluster[] => {
-    if (donations.length === 0) return [];
+  // State for processed donations
+  const [donationsWithCoords, setDonationsWithCoords] = useState<Donation[]>([]);
 
-    const validDonations = donations.filter(d => d.latitude && d.longitude);
-    if (validDonations.length === 0) return [];
-
-    // At high zoom levels (15+), show individual markers
-    if (zoom >= 15) {
-      return validDonations.map(donation => ({
-        center: [donation.latitude!, donation.longitude!] as [number, number],
-        donations: [donation],
-        bounds: [[donation.latitude!, donation.longitude!], [donation.latitude!, donation.longitude!]] as [[number, number], [number, number]],
-        stats: {
-          total: 1,
-          available: donation.is_claimed ? 0 : 1,
-          claimed: donation.is_claimed ? 1 : 0,
-          foodTypes: { [donation.food_type || 'other']: 1 }
-        }
-      }));
-    }
-
-    // At medium zoom levels (10-14), cluster by grid
-    if (zoom >= 10) {
-      const gridSize = 0.01; // Roughly 1km grid
-      const clusters = new Map<string, DonationCluster>();
-
-      validDonations.forEach(donation => {
-        const gridX = Math.floor(donation.latitude! / gridSize);
-        const gridY = Math.floor(donation.longitude! / gridSize);
-        const key = `${gridX},${gridY}`;
-
-        if (!clusters.has(key)) {
-          clusters.set(key, {
-            center: [0, 0] as [number, number],
-            donations: [],
-            bounds: [[Infinity, Infinity], [-Infinity, -Infinity]] as [[number, number], [number, number]],
-            stats: { total: 0, available: 0, claimed: 0, foodTypes: {} }
-          });
-        }
-
-        const cluster = clusters.get(key)!;
-        cluster.donations.push(donation);
-        
-        // Update bounds
-        cluster.bounds[0][0] = Math.min(cluster.bounds[0][0], donation.latitude!);
-        cluster.bounds[0][1] = Math.min(cluster.bounds[0][1], donation.longitude!);
-        cluster.bounds[1][0] = Math.max(cluster.bounds[1][0], donation.latitude!);
-        cluster.bounds[1][1] = Math.max(cluster.bounds[1][1], donation.longitude!);
-
-        // Update stats
-        cluster.stats.total++;
-        if (donation.is_claimed) {
-          cluster.stats.claimed++;
-        } else {
-          cluster.stats.available++;
-        }
-        
-        const foodType = donation.food_type || 'other';
-        cluster.stats.foodTypes[foodType] = (cluster.stats.foodTypes[foodType] || 0) + 1;
-      });
-
-      // Calculate centers for each cluster
-      clusters.forEach(cluster => {
-        const totalLat = cluster.donations.reduce((sum, d) => sum + d.latitude!, 0);
-        const totalLng = cluster.donations.reduce((sum, d) => sum + d.longitude!, 0);
-        cluster.center = [totalLat / cluster.donations.length, totalLng / cluster.donations.length];
-      });
-
-      return Array.from(clusters.values());
-    }
-
-    // At low zoom levels (< 10), cluster by larger grid
-    const gridSize = 0.05; // Roughly 5km grid
-    const clusters = new Map<string, DonationCluster>();
-
-    validDonations.forEach(donation => {
-      const gridX = Math.floor(donation.latitude! / gridSize);
-      const gridY = Math.floor(donation.longitude! / gridSize);
-      const key = `${gridX},${gridY}`;
-
-      if (!clusters.has(key)) {
-        clusters.set(key, {
-          center: [0, 0] as [number, number],
-          donations: [],
-          bounds: [[Infinity, Infinity], [-Infinity, -Infinity]] as [[number, number], [number, number]],
-          stats: { total: 0, available: 0, claimed: 0, foodTypes: {} }
-        });
-      }
-
-      const cluster = clusters.get(key)!;
-      cluster.donations.push(donation);
+  // Update processed donations when donations change
+  useEffect(() => {
+    const processDonations = async () => {
+      const donationsWithCoords = await Promise.all(
+        donations.map(async (donation) => {
+          if (donation.latitude && donation.longitude) {
+            return donation; // Already has coordinates
+          }
+          
+          if (donation.location) {
+            const coords = await geocodeLocation(donation.location);
+            if (coords) {
+              return {
+                ...donation,
+                latitude: coords.lat,
+                longitude: coords.lng
+              };
+            }
+          }
+          
+          return donation; // Return original if no coordinates found
+        })
+      );
       
-      // Update bounds
-      cluster.bounds[0][0] = Math.min(cluster.bounds[0][0], donation.latitude!);
-      cluster.bounds[0][1] = Math.min(cluster.bounds[0][1], donation.longitude!);
-      cluster.bounds[1][0] = Math.max(cluster.bounds[1][0], donation.latitude!);
-      cluster.bounds[1][1] = Math.max(cluster.bounds[1][1], donation.longitude!);
-
-      // Update stats
-      cluster.stats.total++;
-      if (donation.is_claimed) {
-        cluster.stats.claimed++;
-      } else {
-        cluster.stats.available++;
-      }
-      
-      const foodType = donation.food_type || 'other';
-      cluster.stats.foodTypes[foodType] = (cluster.stats.foodTypes[foodType] || 0) + 1;
-    });
-
-    // Calculate centers for each cluster
-    clusters.forEach(cluster => {
-      const totalLat = cluster.donations.reduce((sum, d) => sum + d.latitude!, 0);
-      const totalLng = cluster.donations.reduce((sum, d) => sum + d.longitude!, 0);
-      cluster.center = [totalLat / cluster.donations.length, totalLng / cluster.donations.length];
-    });
-
-    return Array.from(clusters.values());
-  };
+      setDonationsWithCoords(donationsWithCoords);
+      console.log('Processed donations with coordinates:', donationsWithCoords.filter((d: Donation) => d.latitude && d.longitude));
+    };
+    
+    processDonations();
+  }, [donations]);
 
   // Fetch statistics from backend
-  const fetchStatistics = async (zoom: number, bounds?: [[number, number], [number, number]]) => {
+  const fetchAndSetStatistics = async () => {
+    if (!mapInstance) return;
+    const bounds = mapInstance.getBounds();
     try {
-      const filters: any = { zoom };
-      
-      if (bounds) {
-        filters.lat_min = bounds[0][0];
-        filters.lat_max = bounds[1][0];
-        filters.lng_min = bounds[0][1];
-        filters.lng_max = bounds[1][1];
-      }
-
-      const stats = await donationService.getStatistics(filters);
+      const stats = await donationService.getStatistics({
+        zoom: mapInstance.getZoom(),
+        lat_min: bounds.getSouth(),
+        lng_min: bounds.getWest(),
+        lat_max: bounds.getNorth(),
+        lng_max: bounds.getEast(),
+      });
       setStatistics(stats);
     } catch (err) {
       console.error('Failed to fetch statistics:', err);
+      // Fallback to local statistics
+      const validDonations = donationsWithCoords.filter(d => d.latitude && d.longitude);
+      const available = validDonations.filter(d => !d.is_claimed).length;
+      const claimed = validDonations.filter(d => d.is_claimed).length;
+      const total = validDonations.length;
+      const claimRate = total > 0 ? (claimed / total) * 100 : 0;
+      
+      setStatistics({
+        summary: {
+          total,
+          available,
+          claimed,
+          claim_rate: claimRate
+        },
+        food_types: [],
+        clusters: [],
+        recent_activity: [],
+        zoom_level: mapInstance.getZoom()
+      });
     }
   };
 
+  // Calculate local statistics for display
+  const localStatistics = React.useMemo(() => {
+    const validDonations = donationsWithCoords.filter(d => d.latitude && d.longitude);
+    const available = validDonations.filter(d => !d.is_claimed).length;
+    const claimed = validDonations.filter(d => d.is_claimed).length;
+    const total = validDonations.length;
+    const claimRate = total > 0 ? (claimed / total) * 100 : 0;
+    
+    return {
+      total,
+      available,
+      claimed,
+      claim_rate: claimRate
+    };
+  }, [donationsWithCoords]);
+
+  // Debug: Log donation data
   useEffect(() => {
-    if (!mapRef.current) return;
+    console.log('Original donations data:', donations);
+    console.log('Donations with coordinates:', donationsWithCoords);
+    console.log('Valid donations with coordinates:', donationsWithCoords.filter(d => d.latitude && d.longitude));
+    console.log('Local statistics:', localStatistics);
+  }, [donations, donationsWithCoords, localStatistics]);
 
-    const initMap = async () => {
-      try {
-        console.log('Initializing Leaflet map...');
-        
-        // Dynamically import Leaflet to avoid SSR issues
-        const L = await import('leaflet');
-        console.log('Leaflet imported successfully');
+  const handleMapChange = useDebouncedCallback(() => {
+    if (!mapInstance) return;
+    setCurrentZoom(mapInstance.getZoom());
+    fetchAndSetStatistics();
+  }, 300);
 
-        // Set up Leaflet CSS
-        if (!document.querySelector('link[href*="leaflet.css"]')) {
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-          link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-          link.crossOrigin = '';
-          document.head.appendChild(link);
-          console.log('Leaflet CSS loaded');
-        }
+  // Custom icons
+  const createDonationIcon = (isClaimed: boolean) => {
+    const color = isClaimed ? '#9E9E9E' : '#4CAF50';
+    const size = isClaimed ? 16 : 20; // Increased sizes
+    
+    return divIcon({
+      html: `<div style="background-color: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;"></div>`,
+      className: 'donation-marker',
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2],
+    });
+  };
 
-        // Add custom CSS for better cluster styling
-        if (!document.querySelector('style[data-custom-cluster]')) {
-          const customClusterCSS = document.createElement('style');
-          customClusterCSS.setAttribute('data-custom-cluster', 'true');
-          customClusterCSS.textContent = `
-            .donation-cluster {
-              background-clip: padding-box;
-              border-radius: 20px;
-              border: 2px solid white;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-              cursor: pointer;
-              transition: all 0.3s ease;
-            }
-            .donation-cluster:hover {
-              transform: scale(1.1);
-              box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            }
-            .donation-cluster-small {
-              background-color: rgba(76, 175, 80, 0.8);
-            }
-            .donation-cluster-medium {
-              background-color: rgba(255, 152, 0, 0.8);
-            }
-            .donation-cluster-large {
-              background-color: rgba(244, 67, 54, 0.8);
-            }
-            .donation-cluster div {
-              width: 40px;
-              height: 40px;
-              text-align: center;
-              border-radius: 20px;
-              font: 14px "Helvetica Neue", Arial, Helvetica, sans-serif;
-              color: white;
-              font-weight: bold;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              flex-direction: column;
-              line-height: 1;
-            }
-            .donation-cluster .cluster-count {
-              font-size: 16px;
-              font-weight: bold;
-            }
-            .donation-cluster .cluster-available {
-              font-size: 10px;
-              opacity: 0.9;
-            }
-            .donation-marker {
-              cursor: pointer;
-              transition: all 0.2s ease;
-            }
-            .donation-marker:hover {
-              transform: scale(1.2);
-            }
-          `;
-          document.head.appendChild(customClusterCSS);
-          console.log('Custom cluster CSS loaded');
-        }
+  const createUserLocationIcon = () => {
+    return divIcon({
+      html: '<div style="background-color: #4285F4; width: 24px; height: 24px; border-radius: 50%; border: 4px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
+      className: 'user-location-marker',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+  };
 
-        // Determine center
-        let center: [number, number] = [42.3601, -71.0589]; // Boston default
-        
-        if (userLocation) {
-          center = [userLocation.lat, userLocation.lng];
-        } else if (donations.length > 0) {
-          const firstDonation = donations.find(d => d.latitude && d.longitude);
-          if (firstDonation) {
-            center = [firstDonation.latitude!, firstDonation.longitude!];
-          }
-        }
-
-        console.log('Map center:', center);
-
-        // Initialize map
-        mapInstance.current = L.map(mapRef.current!, {
-          center,
-          zoom: userLocation ? 12 : 10,
-          zoomControl: true,
-          attributionControl: true,
-        });
-
-        console.log('Map initialized');
-
-        // Add tile layer (OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors',
-          maxZoom: 19,
-        }).addTo(mapInstance.current);
-
-        console.log('Tile layer added');
-
-        // Initialize layer group for clusters
-        markerClusterGroup.current = L.layerGroup();
-
-        // Add user location marker if available
-        if (userLocation) {
-          const userIcon = L.divIcon({
-            html: '<div style="background-color: #4285F4; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-            className: 'user-location-marker',
-            iconSize: [16, 16],
-            iconAnchor: [8, 8],
-          });
-
-          L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
-            .addTo(mapInstance.current)
-            .bindTooltip('Your Location', { permanent: false });
-          
-          console.log('User location marker added');
-        }
-
-        // Function to update markers based on zoom level
-        const updateMarkers = async () => {
-          // Clear existing markers
-          markerClusterGroup.current.clearLayers();
-          
-          const zoom = mapInstance.current.getZoom();
-          setCurrentZoom(zoom);
-          
-          // Get current map bounds
-          const bounds = mapInstance.current.getBounds();
-          const mapBoundsArray: [[number, number], [number, number]] = [
-            [bounds.getSouth(), bounds.getWest()],
-            [bounds.getNorth(), bounds.getEast()]
-          ];
-          setMapBounds(mapBoundsArray);
-          
-          // Fetch statistics from backend
-          await fetchStatistics(zoom, mapBoundsArray);
-          
-          const clusters = createClusters(donations, zoom);
-          console.log(`Created ${clusters.length} clusters at zoom level ${zoom}`);
-
-          clusters.forEach(cluster => {
-            if (cluster.donations.length === 1) {
-              // Single donation marker
-              const donation = cluster.donations[0];
-              const isClaimed = donation.is_claimed;
-              const color = isClaimed ? '#9E9E9E' : '#4CAF50';
-              const size = isClaimed ? 8 : 12;
-
-              const markerIcon = L.divIcon({
-                html: `<div style="background-color: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-                className: 'donation-marker',
-                iconSize: [size, size],
-                iconAnchor: [size/2, size/2],
-              });
-
-              const marker = L.marker(cluster.center, { icon: markerIcon });
-              
-              // Add click listener
-              marker.on('click', () => {
-                setSelectedDonation(donation);
-                setSelectedCluster(null);
-              });
-
-              // Add tooltip
-              marker.bindTooltip(donation.title, { permanent: false });
-
-              markerClusterGroup.current.addLayer(marker);
-            } else {
-              // Cluster marker
-              const stats = cluster.stats;
-              let className = 'donation-cluster-';
-              let size = 'medium';
-              
-              if (stats.total < 5) {
-                className += 'small';
-                size = 'small';
-              } else if (stats.total < 15) {
-                className += 'medium';
-                size = 'medium';
-              } else {
-                className += 'large';
-                size = 'large';
-              }
-
-              const markerIcon = L.divIcon({
-                html: `
-                  <div>
-                    <div class="cluster-count">${stats.total}</div>
-                    <div class="cluster-available">${stats.available} avail</div>
-                  </div>
-                `,
-                className: `donation-cluster ${className}`,
-                iconSize: L.point(50, 50)
-              });
-
-              const marker = L.marker(cluster.center, { icon: markerIcon });
-              
-              // Add click listener
-              marker.on('click', () => {
-                setSelectedCluster(cluster);
-                setSelectedDonation(null);
-              });
-
-              // Add tooltip with stats
-              const tooltipContent = `
-                <div style="text-align: center;">
-                  <strong>${stats.total} Donations</strong><br>
-                  ${stats.available} Available<br>
-                  ${stats.claimed} Claimed<br>
-                  <small>Click to view details</small>
-                </div>
-              `;
-              marker.bindTooltip(tooltipContent, { permanent: false });
-
-              markerClusterGroup.current.addLayer(marker);
-            }
-          });
-
-          // Add cluster group to map
-          mapInstance.current.addLayer(markerClusterGroup.current);
-        };
-
-        // Initial marker update
-        updateMarkers();
-
-        // Listen for zoom and move changes
-        mapInstance.current.on('zoomend', updateMarkers);
-        mapInstance.current.on('moveend', updateMarkers);
-
-        setIsLoading(false);
-        console.log('Map initialization complete');
-      } catch (err) {
-        console.error('Error initializing map:', err);
-        setError('Failed to initialize map: ' + (err as Error).message);
-        setIsLoading(false);
-      }
-    };
-
-    initMap();
-
-    // Cleanup function
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-      }
-    };
-  }, [donations, userLocation]);
-
-  const getFoodTypeIcon = (foodType: string) => {
-    switch (foodType?.toLowerCase()) {
-      case 'fruits': return '🍎';
-      case 'vegetables': return '🥬';
-      case 'grains': return '🌾';
-      case 'dairy': return '🥛';
-      case 'meat': return '🥩';
-      case 'baked goods': return '🥖';
-      case 'canned goods': return '🥫';
-      case 'frozen foods': return '🧊';
-      case 'beverages': return '🥤';
-      case 'snacks': return '🍿';
-      default: return '🍽️';
+  const createCustomClusterIcon = (cluster: any) => {
+    const count = cluster.getChildCount();
+    let className = 'marker-cluster-';
+    
+    if (count < 5) {
+      className += 'small';
+    } else if (count < 15) {
+      className += 'medium';
+    } else {
+      className += 'large';
     }
+
+    return divIcon({
+      html: `
+        <div class="cluster-icon">
+          <div class="cluster-count">${count}</div>
+        </div>
+      `,
+      className: `custom-marker-cluster ${className}`,
+      iconSize: [50, 50],
+      iconAnchor: [25, 25],
+    });
+  };
+
+  // Determine map center
+  const getMapCenter = (): [number, number] => {
+    if (userLocation) {
+      return [userLocation.lat, userLocation.lng];
+    } else if (donations.length > 0) {
+      const firstDonation = donations.find(d => d.latitude && d.longitude);
+      if (firstDonation) {
+        return [firstDonation.latitude!, firstDonation.longitude!];
+      }
+    }
+    return [42.3601, -71.0589]; // Boston default
   };
 
   const formatDistance = (distance: number) => {
@@ -492,61 +282,154 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
         <Button variant="outlined" onClick={() => window.location.reload()}>
           Retry
         </Button>
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1, textAlign: 'left' }}>
-          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-            Debug Info:
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block' }}>
-            Donations: {donations.length}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block' }}>
-            User Location: {userLocation ? 'Available' : 'Not available'}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block' }}>
-            Map Ref: {mapRef.current ? 'Available' : 'Not available'}
-          </Typography>
-        </Box>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ position: 'relative', height: '600px' }}>
-      {/* Map Container */}
-      <Box sx={{ position: 'relative', height: '100%' }}>
-        <div
-          ref={mapRef}
-          style={{
-            width: '100%',
-            height: '100%',
-            backgroundColor: '#f0f0f0',
-            border: '2px dashed #ccc',
-            position: 'relative',
-          }}
+    <Box sx={{ position: 'relative', height: '600px', width: '100%' }}>
+      {/* Add custom CSS for cluster styling */}
+      <style>
+        {`
+          .custom-marker-cluster {
+            background-clip: padding-box;
+            border-radius: 20px;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+          }
+          .custom-marker-cluster:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+          }
+          .marker-cluster-small {
+            background-color: rgba(76, 175, 80, 0.8);
+          }
+          .marker-cluster-medium {
+            background-color: rgba(255, 152, 0, 0.8);
+          }
+          .marker-cluster-large {
+            background-color: rgba(244, 67, 54, 0.8);
+          }
+          .cluster-icon {
+            height: 40px;
+            width: 40px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: white;
+            font-size: 14px;
+            line-height: 1;
+          }
+          .cluster-count {
+            font-size: 16px;
+            font-weight: bold;
+          }
+          .cluster-available {
+            font-size: 10px;
+            opacity: 0.9;
+          }
+          .donation-marker {
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          .donation-marker:hover {
+            transform: scale(1.2);
+          }
+        `}
+      </style>
+
+      <MapContainer 
+        center={getMapCenter()} 
+        zoom={userLocation ? 12 : 10}
+        style={{ height: '100%', width: '100%' }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {isLoading && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              bgcolor: 'rgba(255, 255, 255, 0.9)',
-              p: 2,
-              borderRadius: 1,
-              zIndex: 10,
-            }}
-          >
-            <Typography variant="h6">Loading map...</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Please wait while the map initializes
-            </Typography>
-          </Box>
+        
+        <MapEventHandler 
+          onMapChange={handleMapChange} 
+          donations={donations}
+          onMapReady={setMapInstance}
+        />
+
+        {/* User location marker */}
+        {userLocation && (
+          <>
+            {/* Overlay donation count at user location with negative z-index */}
+            <div
+              style={{
+                position: 'absolute',
+                left: `calc(50% - 12px)`, // Centered on marker
+                top: `calc(50% - 48px)`, // Adjust as needed for marker size
+                zIndex: -1,
+                pointerEvents: 'none',
+                fontWeight: 700,
+                fontSize: 18,
+                color: '#4285F4',
+                textShadow: '0 1px 4px rgba(0,0,0,0.2)',
+              }}
+            >
+              {donationsWithCoords.filter(d => d.latitude === userLocation.lat && d.longitude === userLocation.lng).length}
+            </div>
+            <Marker 
+              position={[userLocation.lat, userLocation.lng]} 
+              icon={createUserLocationIcon()}
+            >
+              <Popup>Your Location</Popup>
+            </Marker>
+          </>
         )}
-      </Box>
+
+        {/* Donation markers with clustering */}
+        <MarkerClusterGroup
+          chunkedLoading
+          iconCreateFunction={createCustomClusterIcon}
+          maxClusterRadius={60}
+          spiderfyOnMaxZoom={true}
+          showCoverageOnHover={true}
+          zoomToBoundsOnClick={true}
+        >
+          {donationsWithCoords
+            .filter(donation => donation.latitude && donation.longitude)
+            .map((donation) => (
+              <Marker
+                key={donation.id}
+                position={[donation.latitude!, donation.longitude!]}
+                icon={createDonationIcon(donation.is_claimed)}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedDonation(donation);
+                  },
+                }}
+              >
+                <Popup>
+                  <div>
+                    <h3>{donation.title}</h3>
+                    <p>{donation.description}</p>
+                    <p>Food Type: {donation.food_type || 'Unknown'}</p>
+                    <p>Status: {donation.is_claimed ? 'Claimed' : 'Available'}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+        </MarkerClusterGroup>
+      </MapContainer>
+
+      {isLoading && (
+        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255, 255, 255, 0.7)', zIndex: 1001 }}>
+          <CircularProgress />
+        </Box>
+      )}
 
       {/* Statistics Panel */}
-      {statistics && (
+      {(statistics || localStatistics.total > 0) && (
         <Box
           sx={{
             position: 'absolute',
@@ -556,7 +439,7 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
             p: 2,
             borderRadius: 1,
             boxShadow: 2,
-            zIndex: 2,
+            zIndex: 1001,
             minWidth: 200,
           }}
         >
@@ -565,16 +448,16 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             <Typography variant="caption" color="text.secondary">
-              Total: {statistics.summary.total}
+              Total: {statistics?.summary.total || localStatistics.total}
             </Typography>
             <Typography variant="caption" color="success.main">
-              Available: {statistics.summary.available}
+              Available: {statistics?.summary.available || localStatistics.available}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Claimed: {statistics.summary.claimed}
+              Claimed: {statistics?.summary.claimed || localStatistics.claimed}
             </Typography>
             <Typography variant="caption" color="primary.main">
-              Claim Rate: {statistics.summary.claim_rate.toFixed(1)}%
+              Claim Rate: {(statistics?.summary.claim_rate || localStatistics.claim_rate).toFixed(1)}%
             </Typography>
           </Box>
         </Box>
@@ -588,7 +471,7 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
             bottom: 20,
             left: 20,
             right: 20,
-            zIndex: 2,
+            zIndex: 1001,
           }}
         >
           <Card sx={{ maxWidth: 400, mx: 'auto' }}>
@@ -689,111 +572,6 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
         </Box>
       )}
 
-      {/* Selected Cluster Card */}
-      {selectedCluster && (
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 20,
-            left: 20,
-            right: 20,
-            zIndex: 2,
-          }}
-        >
-          <Card sx={{ maxWidth: 500, mx: 'auto' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <TrendingUp />
-                    Donation Cluster
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {selectedCluster.donations.length} donations in this area
-                  </Typography>
-                </Box>
-                <IconButton
-                  size="small"
-                  onClick={() => setSelectedCluster(null)}
-                  sx={{ ml: 1 }}
-                >
-                  <Close />
-                </IconButton>
-              </Box>
-
-              {/* Cluster Statistics */}
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                <Chip
-                  label={`${selectedCluster.stats.total} Total`}
-                  color="primary"
-                  size="small"
-                />
-                <Chip
-                  label={`${selectedCluster.stats.available} Available`}
-                  color="success"
-                  size="small"
-                />
-                <Chip
-                  label={`${selectedCluster.stats.claimed} Claimed`}
-                  color="default"
-                  size="small"
-                />
-              </Box>
-
-              {/* Food Type Breakdown */}
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Food Types:
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {Object.entries(selectedCluster.stats.foodTypes).map(([foodType, count]) => (
-                  <Chip
-                    key={foodType}
-                    icon={<span>{getFoodTypeIcon(foodType)}</span>}
-                    label={`${foodType} (${count})`}
-                    size="small"
-                    variant="outlined"
-                  />
-                ))}
-              </Box>
-
-              {/* Individual Donations */}
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Donations in this area:
-              </Typography>
-              <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
-                {selectedCluster.donations.map((donation) => (
-                  <Box
-                    key={donation.id}
-                    sx={{
-                      p: 1,
-                      mb: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      cursor: 'pointer',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                    onClick={() => {
-                      setSelectedDonation(donation);
-                      setSelectedCluster(null);
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                      {donation.title}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {donation.food_type} • {donation.is_claimed ? 'Claimed' : 'Available'}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-      )}
-
       {/* Legend */}
       <Box
         sx={{
@@ -804,8 +582,8 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
           p: 2,
           borderRadius: 1,
           boxShadow: 2,
-          zIndex: 2,
-          minWidth: 200,
+          zIndex: 1001,
+          minWidth: 150,
         }}
       >
         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
@@ -814,8 +592,8 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Box
             sx={{
-              width: 12,
-              height: 12,
+              width: 20,
+              height: 20,
               borderRadius: '50%',
               bgcolor: '#4CAF50',
               mr: 1,
@@ -826,8 +604,8 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Box
             sx={{
-              width: 8,
-              height: 8,
+              width: 16,
+              height: 16,
               borderRadius: '50%',
               bgcolor: '#9E9E9E',
               mr: 1,
@@ -839,8 +617,8 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <Box
               sx={{
-                width: 16,
-                height: 16,
+                width: 24,
+                height: 24,
                 borderRadius: '50%',
                 bgcolor: '#4285F4',
                 mr: 1,
@@ -849,69 +627,6 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
             <Typography variant="caption">Your Location</Typography>
           </Box>
         )}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Box
-            sx={{
-              width: 30,
-              height: 30,
-              borderRadius: '50%',
-              bgcolor: '#4CAF50',
-              mr: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              color: 'white',
-              fontWeight: 'bold',
-            }}
-          >
-            5
-          </Box>
-          <Typography variant="caption">Small Cluster (2-4)</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Box
-            sx={{
-              width: 30,
-              height: 30,
-              borderRadius: '50%',
-              bgcolor: '#FF9800',
-              mr: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              color: 'white',
-              fontWeight: 'bold',
-            }}
-          >
-            12
-          </Box>
-          <Typography variant="caption">Medium Cluster (5-14)</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Box
-            sx={{
-              width: 30,
-              height: 30,
-              borderRadius: '50%',
-              bgcolor: '#F44336',
-              mr: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              color: 'white',
-              fontWeight: 'bold',
-            }}
-          >
-            25
-          </Box>
-          <Typography variant="caption">Large Cluster (15+)</Typography>
-        </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Zoom in to see individual donations
-        </Typography>
       </Box>
 
       {/* Zoom Level Indicator */}
@@ -924,7 +639,7 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
           p: 1,
           borderRadius: 1,
           boxShadow: 2,
-          zIndex: 2,
+          zIndex: 1001,
         }}
       >
         <Typography variant="caption" color="text.secondary">

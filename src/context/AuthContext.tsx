@@ -1,4 +1,3 @@
-
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
@@ -10,6 +9,7 @@ interface AuthContextType {
   login: (username:string, password:string) => Promise<void>;
   register: (username:string, email:string, password:string, role:'receiver' | 'donor') => Promise<void>;
   logout: () => void;
+  updateUser: (userData: User) => void;
 }
 
 interface AuthProviderProps {
@@ -65,7 +65,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     navigate('/login'); // Redirect to the login page.
   };
 
-  const contextValue = { user, loading, login, register, logout };
+  const updateUser = (userData: User) => {
+    setUser(userData);
+  };
+
+  const contextValue = { user, loading, login, register, logout, updateUser };
 
   return (
     <AuthContext.Provider value={contextValue}>

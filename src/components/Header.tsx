@@ -1,39 +1,40 @@
 import {
-    AccountCircle,
-    Add,
-    Brightness4,
-    Brightness7,
-    ExitToApp,
-    Home,
-    List,
-    Person,
-    Restaurant
+  Add,
+  Brightness4,
+  Brightness7,
+  ExitToApp,
+  Home,
+  List,
+  Person,
+  Restaurant
 } from '@mui/icons-material';
 import {
-    AppBar,
-    Box,
-    Button,
-    Chip,
-    Container,
-    Divider,
-    Drawer,
-    IconButton,
-    ListItem,
-    ListItemIcon,
-    ListItemText,
-    Menu,
-    MenuItem,
-    List as MuiList,
-    Toolbar,
-    Tooltip,
-    Typography,
-    useMediaQuery,
-    useTheme,
+  AppBar,
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  Container,
+  Divider,
+  Drawer,
+  IconButton,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  List as MuiList,
+  Toolbar,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme as useThemeContext } from '../context/ThemeContext';
+import { generateAvatarProps } from '../utils/avatarUtils';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -117,9 +118,22 @@ const Header: React.FC = () => {
       }}
     >
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Menu
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Box
+            component="img"
+            src="/logo.svg"
+            alt="FoodBridge Logo"
+            sx={{
+              height: 32,
+              width: 'auto',
+              mr: 1,
+              color: 'white',
+            }}
+          />
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            FoodBridge
+          </Typography>
+        </Box>
         
         <MuiList>
           {navigationItems.map((item) => (
@@ -160,7 +174,13 @@ const Header: React.FC = () => {
             <Divider sx={{ my: 2 }} />
             <Box sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <AccountCircle color="primary" />
+                <Avatar
+                  {...generateAvatarProps(user.username)}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                  }}
+                />
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     {user.username}
@@ -174,6 +194,19 @@ const Header: React.FC = () => {
                   />
                 </Box>
               </Box>
+              
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<Person />}
+                onClick={() => {
+                  navigate(`/profile/${user.id}`);
+                  setMobileMenuOpen(false);
+                }}
+                sx={{ mb: 1 }}
+              >
+                View Profile
+              </Button>
               
               <Button
                 fullWidth
@@ -215,7 +248,17 @@ const Header: React.FC = () => {
             }}
             onClick={() => navigate('/')}
           >
-            <Restaurant sx={{ mr: 2, fontSize: 32 }} />
+            <Box
+              component="img"
+              src="/logo.svg"
+              alt="FoodBridge Logo"
+              sx={{
+                height: 40,
+                width: 'auto',
+                mr: 1,
+                color: 'white',
+              }}
+            />
             <Typography
               variant="h6"
               component="div"
@@ -279,7 +322,14 @@ const Header: React.FC = () => {
                   onClick={isMobile ? () => setMobileMenuOpen(true) : handleMenu}
                   sx={{ color: 'white' }}
                 >
-                  <AccountCircle />
+                  <Avatar
+                    {...generateAvatarProps(user.username)}
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      border: '2px solid rgba(255,255,255,0.3)',
+                    }}
+                  />
                 </IconButton>
                 
                 {/* Desktop Menu */}
@@ -307,7 +357,7 @@ const Header: React.FC = () => {
                       },
                     }}
                   >
-                    <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>
+                    <MenuItem onClick={() => { handleClose(); navigate(`/profile/${user.id}`); }}>
                       <Person sx={{ mr: 2 }} />
                       Profile
                     </MenuItem>

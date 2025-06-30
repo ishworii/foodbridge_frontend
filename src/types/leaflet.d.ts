@@ -1,22 +1,24 @@
-declare module 'leaflet.markercluster' {
-  import { LayerGroup } from 'leaflet';
-  
+import 'leaflet';
+
+declare module 'leaflet' {
   interface MarkerClusterGroupOptions {
     chunkedLoading?: boolean;
     spiderfyOnMaxZoom?: boolean;
     showCoverageOnHover?: boolean;
     zoomToBoundsOnClick?: boolean;
     maxClusterRadius?: number;
-    iconCreateFunction?: (cluster: any) => any;
+    iconCreateFunction?: (cluster: any) => L.DivIcon;
   }
-  
-  class MarkerClusterGroup extends LayerGroup {
+
+  class MarkerClusterGroup extends L.LayerGroup {
     constructor(options?: MarkerClusterGroupOptions);
-    addLayer(layer: any): this;
-    removeLayer(layer: any): this;
-    getLayers(): any[];
-    getBounds(): any;
+    getChildCount(): number;
+    getBounds(): L.LatLngBounds;
   }
-  
-  export = MarkerClusterGroup;
+
+  function markerClusterGroup(options?: MarkerClusterGroupOptions): MarkerClusterGroup;
+}
+
+declare module 'leaflet.markercluster' {
+  export = L;
 } 

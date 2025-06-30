@@ -4,10 +4,11 @@ import {
     CheckCircle,
     Description,
     Edit as EditIcon,
+    Image as ImageIcon,
     LocationOn,
     Numbers,
     Restaurant,
-    Warning,
+    Warning
 } from '@mui/icons-material';
 import {
     Alert,
@@ -19,8 +20,12 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
+    FormControl,
     IconButton,
+    InputLabel,
+    MenuItem,
     Paper,
+    Select,
     Step,
     StepContent,
     StepLabel,
@@ -29,7 +34,8 @@ import {
     Typography,
     useTheme
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import { Editor } from '@tinymce/tinymce-react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
 import Layout from '../components/Layout';
@@ -58,6 +64,7 @@ const DonationFormPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
     title: '',
@@ -67,6 +74,8 @@ const DonationFormPage: React.FC = () => {
     food_type: '',
     expiry_date: '',
   });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [donationDetails, setDonationDetails] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -95,6 +104,11 @@ const DonationFormPage: React.FC = () => {
         food_type: donation.food_type || '',
         expiry_date: donation.expiry_date || '',
       });
+      
+      // Set image preview if donation has an image
+      if (donation.image_url) {
+        setImagePreview(donation.image_url);
+      }
     } catch (err) {
       setError('Failed to load donation details');
       console.error(err);
@@ -139,16 +153,38 @@ const DonationFormPage: React.FC = () => {
     setError('');
 
     try {
-      const payload = {
-        ...formData,
-        quantity: parseInt(formData.quantity),
-      };
+      // Create FormData for multipart upload (includes image)
+      const formDataToSend = new FormData();
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('quantity', formData.quantity);
+      formDataToSend.append('location', formData.location);
+      formDataToSend.append('food_type', formData.food_type);
+      formDataToSend.append('expiry_date', formData.expiry_date);
+      
+      // Add image if selected
+      if (selectedImage) {
+        formDataToSend.append('image', selectedImage);
+      }
+
+      // Debug: Check authentication
+      const token = localStorage.getItem('access_token');
+      console.log('Auth token exists:', !!token);
+      console.log('User is authenticated:', !!token);
 
       if (isEditMode) {
-        await axiosInstance.put(`/donations/${id}/`, payload);
+        await axiosInstance.put(`/donations/${id}/`, formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
         setSuccessMessage('Donation updated successfully!');
       } else {
-        await axiosInstance.post('/donations/', payload);
+        await axiosInstance.post('/donations/', formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
         setSuccessMessage('Donation created successfully!');
       }
 
@@ -159,13 +195,23 @@ const DonationFormPage: React.FC = () => {
         navigate('/donations');
       }, 2000);
     } catch (err: any) {
-      setError(
-        err.response?.data?.title?.[0] ||
-        err.response?.data?.description?.[0] ||
-        err.response?.data?.quantity?.[0] ||
-        err.response?.data?.location?.[0] ||
-        'Failed to save donation. Please try again.'
-      );
+      console.error('Donation creation error:', err);
+      console.error('Error response:', err.response);
+      
+      if (err.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+      } else if (err.response?.status === 403) {
+        setError('You do not have permission to create donations.');
+      } else {
+        setError(
+          err.response?.data?.title?.[0] ||
+          err.response?.data?.description?.[0] ||
+          err.response?.data?.quantity?.[0] ||
+          err.response?.data?.location?.[0] ||
+          err.response?.data?.error ||
+          'Failed to save donation. Please try again.'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -174,6 +220,32 @@ const DonationFormPage: React.FC = () => {
   const handleProceedWithEdit = () => {
     setShowClaimedWarning(false);
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
+  };
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageRemove = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerImageSelect = () => {
+    fileInputRef.current?.click();
   };
 
   const getStepContent = (step: number) => {
@@ -211,20 +283,101 @@ const DonationFormPage: React.FC = () => {
               }}
             />
 
-            <TextField
-              label="Description"
-              value={formData.description}
-              onChange={handleChange('description')}
-              required
-              fullWidth
-              multiline
-              rows={6}
-              placeholder="Describe what you're donating, any special requirements, dietary restrictions, or additional details that would help receivers..."
-              helperText="Provide detailed information about your donation"
-              InputProps={{
-                startAdornment: <Description sx={{ mr: 1, color: 'text.secondary' }} />,
-              }}
-            />
+            {/* Rich Text Description Editor */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                Description *
+              </Typography>
+              <Editor
+                key={theme.palette.mode}
+                apiKey="ksu2ok2cbzl6tnixr5xqmzk49rcl3bnfjr0whcm3r8xvdvqf"
+                value={formData.description}
+                onEditorChange={(content: string) => setFormData(prev => ({ ...prev, description: content }))}
+                init={{
+                  height: 300,
+                  menubar: false,
+                  skin: theme.palette.mode === 'dark' ? 'oxide-dark' : 'oxide',
+                  content_css: theme.palette.mode === 'dark' ? 'dark' : 'default',
+                  plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                    'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                  ],
+                  toolbar: 'undo redo | blocks | ' +
+                    'bold italic forecolor | alignleft aligncenter ' +
+                    'alignright alignjustify | bullist numlist outdent indent | ' +
+                    'removeformat | help',
+                  content_style: `
+                    p { margin: 0 0 8px 0; }
+                    h1, h2, h3, h4, h5, h6 { margin: 16px 0 8px 0; font-weight: 600; }
+                    ul, ol { margin: 8px 0; padding-left: 20px; }
+                    li { margin: 4px 0; }
+                    a { text-decoration: none; }
+                    a:hover { text-decoration: underline; }
+                    blockquote { border-left: 4px solid #1976d2; padding-left: 16px; margin: 16px 0; font-style: italic; }
+                    code { padding: 2px 4px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 13px; }
+                    pre { padding: 12px; border-radius: 4px; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 13px; margin: 8px 0; }
+                    strong, b { font-weight: 600; }
+                    em, i { font-style: italic; }
+                  `,
+                }}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Provide detailed information about your donation. You can use formatting options above.
+              </Typography>
+            </Box>
+
+            {/* Image Upload */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                Image (Optional)
+              </Typography>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageSelect}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
+              
+              {imagePreview ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box
+                    component="img"
+                    src={imagePreview}
+                    alt="Preview"
+                    sx={{
+                      maxWidth: '100%',
+                      maxHeight: 200,
+                      objectFit: 'cover',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  />
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={handleImageRemove}
+                    startIcon={<ImageIcon />}
+                  >
+                    Remove Image
+                  </Button>
+                </Box>
+              ) : (
+                <Button
+                  variant="outlined"
+                  onClick={triggerImageSelect}
+                  startIcon={<ImageIcon />}
+                  sx={{ width: '100%', py: 2 }}
+                >
+                  Add Image
+                </Button>
+              )}
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Add a photo of your donation to help receivers see what's available.
+              </Typography>
+            </Box>
           </Box>
         );
 
@@ -243,6 +396,39 @@ const DonationFormPage: React.FC = () => {
               InputProps={{
                 startAdornment: <Numbers sx={{ mr: 1, color: 'text.secondary' }} />,
               }}
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Food Type</InputLabel>
+              <Select
+                value={formData.food_type}
+                label="Food Type"
+                onChange={(e) => setFormData(prev => ({ ...prev, food_type: e.target.value }))}
+              >
+                <MenuItem value="">Not specified</MenuItem>
+                <MenuItem value="fruits">Fruits</MenuItem>
+                <MenuItem value="vegetables">Vegetables</MenuItem>
+                <MenuItem value="grains">Grains & Bread</MenuItem>
+                <MenuItem value="dairy">Dairy & Eggs</MenuItem>
+                <MenuItem value="meat">Meat & Fish</MenuItem>
+                <MenuItem value="canned">Canned Goods</MenuItem>
+                <MenuItem value="frozen">Frozen Foods</MenuItem>
+                <MenuItem value="baked">Baked Goods</MenuItem>
+                <MenuItem value="prepared">Prepared Meals</MenuItem>
+                <MenuItem value="other">Other</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Expiry Date"
+              type="date"
+              value={formData.expiry_date}
+              onChange={handleChange('expiry_date')}
+              fullWidth
+              InputLabelProps={{
+                shrink: true,
+              }}
+              helperText="When does this food expire? (Optional)"
             />
 
             <LocationInput
@@ -273,13 +459,89 @@ const DonationFormPage: React.FC = () => {
                 
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">Description</Typography>
-                  <Typography variant="body1">{formData.description}</Typography>
+                  <Box 
+                    sx={{ 
+                      p: 2, 
+                      bgcolor: 'background.default', 
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      color: 'text.secondary',
+                      '& h1, & h2, & h3, & h4, & h5, & h6': {
+                        color: 'text.primary',
+                        fontWeight: 600,
+                        mb: 1,
+                      },
+                      '& p': {
+                        color: 'text.secondary',
+                        mb: 1,
+                        lineHeight: 1.6,
+                      },
+                      '& ul, & ol': {
+                        color: 'text.secondary',
+                        pl: 2,
+                        mb: 1,
+                        lineHeight: 1.6,
+                      },
+                      '& li': {
+                        color: 'text.secondary',
+                        mb: 0.5,
+                      },
+                      '& strong, & b': {
+                        color: 'text.primary',
+                        fontWeight: 600,
+                      },
+                      '& em, & i': {
+                        color: 'text.secondary',
+                        fontStyle: 'italic',
+                      },
+                      '& a': {
+                        color: 'primary.main',
+                        textDecoration: 'none',
+                        '&:hover': {
+                          textDecoration: 'underline',
+                        },
+                      },
+                    }}
+                    dangerouslySetInnerHTML={{ __html: formData.description }}
+                  />
                 </Box>
+                
+                {imagePreview && (
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">Image</Typography>
+                    <Box
+                      component="img"
+                      src={imagePreview}
+                      alt="Donation preview"
+                      sx={{
+                        maxWidth: '100%',
+                        maxHeight: 200,
+                        objectFit: 'cover',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                      }}
+                    />
+                  </Box>
+                )}
                 
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">Quantity</Typography>
                   <Typography variant="body1">{formData.quantity}</Typography>
                 </Box>
+                
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">Food Type</Typography>
+                  <Typography variant="body1">{formData.food_type || 'Not specified'}</Typography>
+                </Box>
+                
+                {formData.expiry_date && (
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">Expiry Date</Typography>
+                    <Typography variant="body1">{new Date(formData.expiry_date).toLocaleDateString()}</Typography>
+                  </Box>
+                )}
                 
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">Location</Typography>
