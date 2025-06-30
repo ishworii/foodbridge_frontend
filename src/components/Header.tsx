@@ -27,8 +27,7 @@ import {
   Toolbar,
   Tooltip,
   Typography,
-  useMediaQuery,
-  useTheme
+  useMediaQuery
 } from '@mui/material';
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -39,10 +38,9 @@ import { generateAvatarProps } from '../utils/avatarUtils';
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const { mode, toggleTheme } = useThemeContext();
-  const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery('(max-width:960px)');
   
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

@@ -23,8 +23,7 @@ import {
     DialogContent,
     DialogTitle,
     IconButton,
-    Typography,
-    useTheme
+    Typography
 } from '@mui/material';
 import { divIcon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -64,7 +63,6 @@ const MapController: React.FC<{
 };
 
 const DonationDetailPage: React.FC = () => {
-    const theme = useTheme();
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const { user } = useAuth();

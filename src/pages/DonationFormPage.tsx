@@ -1,38 +1,37 @@
 import {
-    Add as AddIcon,
-    ArrowBack,
-    CheckCircle,
-    Description,
-    Edit as EditIcon,
-    Image as ImageIcon,
-    LocationOn,
-    Numbers,
-    Restaurant,
-    Warning
+  Add as AddIcon,
+  ArrowBack,
+  CheckCircle,
+  Description,
+  Edit as EditIcon,
+  Image as ImageIcon,
+  LocationOn,
+  Numbers,
+  Restaurant,
+  Warning
 } from '@mui/icons-material';
 import {
-    Alert,
-    Box,
-    Button,
-    CircularProgress,
-    Container,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    FormControl,
-    IconButton,
-    InputLabel,
-    MenuItem,
-    Paper,
-    Select,
-    Step,
-    StepContent,
-    StepLabel,
-    Stepper,
-    TextField,
-    Typography,
-    useTheme
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Step,
+  StepContent,
+  StepLabel,
+  Stepper,
+  TextField,
+  Typography
 } from '@mui/material';
 import { Editor } from '@tinymce/tinymce-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -61,7 +60,6 @@ const steps = [
 ];
 
 const DonationFormPage: React.FC = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -289,15 +287,14 @@ const DonationFormPage: React.FC = () => {
                 Description *
               </Typography>
               <Editor
-                key={theme.palette.mode}
                 apiKey="ksu2ok2cbzl6tnixr5xqmzk49rcl3bnfjr0whcm3r8xvdvqf"
                 value={formData.description}
                 onEditorChange={(content: string) => setFormData(prev => ({ ...prev, description: content }))}
                 init={{
                   height: 300,
                   menubar: false,
-                  skin: theme.palette.mode === 'dark' ? 'oxide-dark' : 'oxide',
-                  content_css: theme.palette.mode === 'dark' ? 'dark' : 'default',
+                  skin: 'oxide',
+                  content_css: 'default',
                   plugins: [
                     'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                     'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
@@ -637,7 +634,7 @@ const DonationFormPage: React.FC = () => {
               component="h1" 
               sx={{ 
                 fontWeight: 700,
-                color: theme.palette.text.primary,
+                color: 'primary.main',
               }}
             >
               {isEditMode ? 'Edit Donation' : 'Create Donation'}
@@ -646,7 +643,7 @@ const DonationFormPage: React.FC = () => {
           <Typography 
             variant="body1" 
             sx={{ 
-              color: theme.palette.text.secondary,
+              color: 'text.secondary',
               ml: 6,
             }}
           >

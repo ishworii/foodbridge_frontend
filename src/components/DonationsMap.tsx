@@ -142,22 +142,6 @@ const DonationsMap: React.FC<DonationsMapProps> = ({
     });
   }, [donations]);
 
-  const getFoodTypeIcon = (foodType: string) => {
-    switch (foodType?.toLowerCase()) {
-      case 'fruits': return '🍎';
-      case 'vegetables': return '🥬';
-      case 'grains': return '🌾';
-      case 'dairy': return '🥛';
-      case 'meat': return '🥩';
-      case 'baked goods': return '🥖';
-      case 'canned goods': return '🥫';
-      case 'frozen foods': return '🧊';
-      case 'beverages': return '🥤';
-      case 'snacks': return '🍿';
-      default: return '🍽️';
-    }
-  };
-
   const formatDistance = (distance: number) => {
     if (distance < 1) {
       return `${Math.round(distance * 5280)} ft`;

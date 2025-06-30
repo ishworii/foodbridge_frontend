@@ -21,7 +21,7 @@ const MapEventHandler: React.FC<{
   onMapChange: () => void;
   donations: Donation[];
   onMapReady: (map: any) => void;
-}> = ({ onMapChange, donations, onMapReady }) => {
+}> = ({ onMapChange, onMapReady }) => {
   const map = useMap();
 
   useEffect(() => {
@@ -85,8 +85,8 @@ const DonationsMapLeaflet: React.FC<DonationsMapLeafletProps> = ({
   onDelete,
 }) => {
   const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading] = useState(false);
+  const [error] = useState<string | null>(null);
   const [statistics, setStatistics] = useState<DonationStatistics | null>(null);
   const [currentZoom, setCurrentZoom] = useState(10);
   const [mapInstance, setMapInstance] = useState<any>(null);

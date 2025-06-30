@@ -25,8 +25,7 @@ import {
     ToggleButton,
     ToggleButtonGroup,
     Tooltip,
-    Typography,
-    useTheme
+    Typography
 } from '@mui/material';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -41,7 +40,6 @@ import { useAuth } from '../context/AuthContext';
 import type { Donation } from '../types';
 
 const DonationsPage: React.FC = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -339,7 +337,6 @@ const DonationsPage: React.FC = () => {
             variant="h4" 
             sx={{ 
               fontWeight: 600,
-              color: theme.palette.text.primary,
             }}
           >
             Food Donations
@@ -349,7 +346,7 @@ const DonationsPage: React.FC = () => {
             <ToggleButtonGroup
               value={viewMode}
               exclusive
-              onChange={(e, newMode) => newMode && setViewMode(newMode)}
+              onChange={(_, newMode) => newMode && setViewMode(newMode)}
               size="small"
             >
               <ToggleButton value="list">
@@ -434,9 +431,6 @@ const DonationsPage: React.FC = () => {
               sx={{ 
                 minWidth: 300, 
                 flex: 1,
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: theme.palette.background.paper,
-                },
               }}
             />
             
@@ -534,7 +528,7 @@ const DonationsPage: React.FC = () => {
                   <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                     <Slider
                       value={distanceFilter}
-                      onChange={(e, value) => setDistanceFilter(value as number)}
+                      onChange={(_, value) => setDistanceFilter(value as number)}
                       min={1}
                       max={200}
                       marks={[
@@ -617,7 +611,7 @@ const DonationsPage: React.FC = () => {
                 <Pagination
                   count={totalPages}
                   page={currentPage}
-                  onChange={(e, page) => setCurrentPage(page)}
+                  onChange={(_, page) => setCurrentPage(page)}
                   color="primary"
                   size="large"
                   showFirstButton

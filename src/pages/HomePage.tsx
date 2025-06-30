@@ -264,10 +264,8 @@ const HomePage: React.FC = () => {
                 p: 3,
                 textAlign: 'center',
                 borderRadius: 3,
-                background: (theme) => theme.palette.mode === 'dark'
-                  ? 'linear-gradient(135deg, #232526 0%, #414345 100%)'
-                  : 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-                color: (theme) => theme.palette.mode === 'dark' ? 'white' : 'primary.main',
+                background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                color: 'primary.main',
               }}
             >
               <Typography
@@ -275,7 +273,7 @@ const HomePage: React.FC = () => {
                 component="div"
                 sx={{
                   fontWeight: 700,
-                  color: (theme) => theme.palette.mode === 'dark' ? 'white' : 'primary.main',
+                  color: 'primary.main',
                   mb: 1,
                 }}
               >

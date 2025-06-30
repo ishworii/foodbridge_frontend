@@ -17,14 +17,12 @@ import {
     Select,
     TextField,
     Typography,
-    useTheme,
 } from '@mui/material';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
 
 const RegisterPage: React.FC = () => {
-  const theme = useTheme();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -98,27 +96,12 @@ const RegisterPage: React.FC = () => {
       : 'Find and claim available food donations';
   };
 
-  // Theme-aware background gradient
-  const backgroundGradient = theme.palette.mode === 'dark' 
-    ? 'linear-gradient(135deg, #1a237e 0%, #311b92 100%)'
-    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-
-  // Theme-aware paper background
-  const paperBackground = theme.palette.mode === 'dark'
-    ? 'rgba(18, 18, 18, 0.95)'
-    : 'rgba(255, 255, 255, 0.95)';
-
-  // Theme-aware border color
-  const borderColor = theme.palette.mode === 'dark'
-    ? 'rgba(255, 255, 255, 0.1)'
-    : 'rgba(255, 255, 255, 0.2)';
-
   return (
     <Box
       sx={{
         minHeight: '100vh',
         width: '100vw',
-        background: backgroundGradient,
+        background: '#e0e0e0',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -133,9 +116,9 @@ const RegisterPage: React.FC = () => {
           sx={{
             p: 4,
             borderRadius: 4,
-            background: paperBackground,
+            background: '#fff',
             backdropFilter: 'blur(10px)',
-            border: `1px solid ${borderColor}`,
+            border: '1px solid #e0e0e0',
             width: '100%',
           }}
         >
@@ -149,7 +132,7 @@ const RegisterPage: React.FC = () => {
                 height: 64,
                 width: 'auto',
                 mb: 2,
-                color: theme.palette.primary.main,
+                color: 'primary.main',
               }}
             />
             <Typography 
@@ -158,7 +141,7 @@ const RegisterPage: React.FC = () => {
               sx={{ 
                 fontWeight: 700, 
                 mb: 1,
-                color: theme.palette.text.primary,
+                color: 'primary.main',
               }}
             >
               Join FoodBridge
@@ -166,7 +149,7 @@ const RegisterPage: React.FC = () => {
             <Typography 
               variant="body1" 
               sx={{ 
-                color: theme.palette.text.secondary,
+                color: 'text.secondary',
               }}
             >
               Connect with your community through food sharing
@@ -195,33 +178,29 @@ const RegisterPage: React.FC = () => {
                 helperText="Choose a unique username"
                 InputProps={{
                   sx: {
-                    backgroundColor: theme.palette.background.paper,
+                    backgroundColor: 'background.paper',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.2)' 
-                        : 'rgba(0,0,0,0.2)',
+                      borderColor: '#e0e0e0',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.4)' 
-                        : 'rgba(0,0,0,0.4)',
+                      borderColor: '#e0e0e0',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: 'primary.main',
                     },
                   },
                 }}
                 InputLabelProps={{
                   sx: {
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                     '&.Mui-focused': {
-                      color: theme.palette.primary.main,
+                      color: 'primary.main',
                     },
                   },
                 }}
                 FormHelperTextProps={{
                   sx: {
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                   },
                 }}
               />
@@ -239,33 +218,29 @@ const RegisterPage: React.FC = () => {
                 helperText="We'll never share your email"
                 InputProps={{
                   sx: {
-                    backgroundColor: theme.palette.background.paper,
+                    backgroundColor: 'background.paper',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.2)' 
-                        : 'rgba(0,0,0,0.2)',
+                      borderColor: '#e0e0e0',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.4)' 
-                        : 'rgba(0,0,0,0.4)',
+                      borderColor: '#e0e0e0',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: 'primary.main',
                     },
                   },
                 }}
                 InputLabelProps={{
                   sx: {
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                     '&.Mui-focused': {
-                      color: theme.palette.primary.main,
+                      color: 'primary.main',
                     },
                   },
                 }}
                 FormHelperTextProps={{
                   sx: {
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                   },
                 }}
               />
@@ -290,33 +265,29 @@ const RegisterPage: React.FC = () => {
                     </Button>
                   ),
                   sx: {
-                    backgroundColor: theme.palette.background.paper,
+                    backgroundColor: 'background.paper',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.2)' 
-                        : 'rgba(0,0,0,0.2)',
+                      borderColor: '#e0e0e0',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.4)' 
-                        : 'rgba(0,0,0,0.4)',
+                      borderColor: '#e0e0e0',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: 'primary.main',
                     },
                   },
                 }}
                 InputLabelProps={{
                   sx: {
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                     '&.Mui-focused': {
-                      color: theme.palette.primary.main,
+                      color: 'primary.main',
                     },
                   },
                 }}
                 FormHelperTextProps={{
                   sx: {
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                   },
                 }}
                 helperText="At least 8 characters"
@@ -342,33 +313,29 @@ const RegisterPage: React.FC = () => {
                     </Button>
                   ),
                   sx: {
-                    backgroundColor: theme.palette.background.paper,
+                    backgroundColor: 'background.paper',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.2)' 
-                        : 'rgba(0,0,0,0.2)',
+                      borderColor: '#e0e0e0',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.4)' 
-                        : 'rgba(0,0,0,0.4)',
+                      borderColor: '#e0e0e0',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: 'primary.main',
                     },
                   },
                 }}
                 InputLabelProps={{
                   sx: {
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                     '&.Mui-focused': {
-                      color: theme.palette.primary.main,
+                      color: 'primary.main',
                     },
                   },
                 }}
                 FormHelperTextProps={{
                   sx: {
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                   },
                 }}
                 helperText="Confirm your password"
@@ -377,9 +344,9 @@ const RegisterPage: React.FC = () => {
               <FormControl fullWidth>
                 <InputLabel 
                   sx={{ 
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                     '&.Mui-focused': {
-                      color: theme.palette.primary.main,
+                      color: 'primary.main',
                     },
                   }}
                 >
@@ -390,19 +357,15 @@ const RegisterPage: React.FC = () => {
                   label="Role"
                   onChange={handleRoleChange}
                   sx={{
-                    backgroundColor: theme.palette.background.paper,
+                    backgroundColor: 'background.paper',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.2)' 
-                        : 'rgba(0,0,0,0.2)',
+                      borderColor: '#e0e0e0',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' 
-                        ? 'rgba(255,255,255,0.4)' 
-                        : 'rgba(0,0,0,0.4)',
+                      borderColor: '#e0e0e0',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: 'primary.main',
                     },
                   }}
                 >
@@ -436,12 +399,8 @@ const RegisterPage: React.FC = () => {
                 sx={{
                   p: 2,
                   borderRadius: 2,
-                  bgcolor: theme.palette.mode === 'dark' 
-                    ? 'rgba(255, 255, 255, 0.05)' 
-                    : 'rgba(0, 0, 0, 0.05)',
-                  border: `1px solid ${theme.palette.mode === 'dark' 
-                    ? 'rgba(255, 255, 255, 0.1)' 
-                    : 'rgba(0, 0, 0, 0.1)'}`,
+                  bgcolor: '#e0e0e0',
+                  border: '1px solid #e0e0e0',
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -450,7 +409,7 @@ const RegisterPage: React.FC = () => {
                     variant="subtitle2" 
                     sx={{ 
                       fontWeight: 600,
-                      color: theme.palette.text.primary,
+                      color: 'primary.main',
                     }}
                   >
                     {formData.role === 'donor' ? 'Donor' : 'Receiver'}
@@ -459,7 +418,7 @@ const RegisterPage: React.FC = () => {
                 <Typography 
                   variant="body2" 
                   sx={{ 
-                    color: theme.palette.text.secondary,
+                    color: 'text.secondary',
                   }}
                 >
                   {getRoleDescription(formData.role)}
@@ -493,7 +452,7 @@ const RegisterPage: React.FC = () => {
                 variant="body2" 
                 sx={{ 
                   mb: 1,
-                  color: theme.palette.text.secondary,
+                  color: 'text.secondary',
                 }}
               >
                 Already have an account?
@@ -505,11 +464,11 @@ const RegisterPage: React.FC = () => {
                   size="large"
                   sx={{
                     fontWeight: 600,
-                    borderColor: theme.palette.primary.main,
-                    color: theme.palette.primary.main,
+                    borderColor: 'primary.main',
+                    color: 'primary.main',
                     '&:hover': {
-                      borderColor: theme.palette.primary.dark,
-                      backgroundColor: theme.palette.primary.main,
+                      borderColor: 'primary.dark',
+                      backgroundColor: 'primary.main',
                       color: 'white',
                     },
                   }}
@@ -526,9 +485,7 @@ const RegisterPage: React.FC = () => {
           <Typography 
             variant="body2" 
             sx={{ 
-              color: theme.palette.mode === 'dark' 
-                ? 'rgba(255, 255, 255, 0.7)' 
-                : 'rgba(255, 255, 255, 0.8)',
+              color: '#e0e0e0',
             }}
           >
             Connecting communities through food sharing

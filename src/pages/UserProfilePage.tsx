@@ -16,8 +16,7 @@ import {
     Paper,
     Tab,
     Tabs,
-    Typography,
-    useTheme
+    Typography
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -51,7 +50,6 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const UserProfilePage: React.FC = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
@@ -92,7 +90,7 @@ const UserProfilePage: React.FC = () => {
     }
   };
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 

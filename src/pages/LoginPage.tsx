@@ -12,14 +12,12 @@ import {
     Paper,
     TextField,
     Typography,
-    useTheme,
 } from '@mui/material';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const LoginPage: React.FC = () => {
-  const theme = useTheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,27 +41,12 @@ const LoginPage: React.FC = () => {
     setShowPassword(!showPassword);
   };
 
-  // Theme-aware background gradient
-  const backgroundGradient = theme.palette.mode === 'dark' 
-    ? 'linear-gradient(135deg, #1a237e 0%, #311b92 100%)'
-    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-
-  // Theme-aware paper background
-  const paperBackground = theme.palette.mode === 'dark'
-    ? 'rgba(18, 18, 18, 0.95)'
-    : 'rgba(255, 255, 255, 0.95)';
-
-  // Theme-aware border color
-  const borderColor = theme.palette.mode === 'dark'
-    ? 'rgba(255, 255, 255, 0.1)'
-    : 'rgba(255, 255, 255, 0.2)';
-
   return (
     <Box
       sx={{
         minHeight: '100vh',
         width: '100vw',
-        background: backgroundGradient,
+        background: '#e0e0e0',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -78,9 +61,9 @@ const LoginPage: React.FC = () => {
           sx={{
             p: 4,
             borderRadius: 4,
-            background: paperBackground,
+            background: '#fff',
             backdropFilter: 'blur(10px)',
-            border: `1px solid ${borderColor}`,
+            border: '1px solid #e0e0e0',
             width: '100%',
           }}
         >
@@ -94,7 +77,7 @@ const LoginPage: React.FC = () => {
                 height: 64,
                 width: 'auto',
                 mb: 2,
-                color: theme.palette.primary.main,
+                color: 'primary.main',
               }}
             />
             <Typography 
@@ -103,7 +86,7 @@ const LoginPage: React.FC = () => {
               sx={{ 
                 fontWeight: 700, 
                 mb: 1,
-                color: theme.palette.text.primary,
+                color: 'primary.main',
               }}
             >
               Welcome Back
@@ -111,7 +94,7 @@ const LoginPage: React.FC = () => {
             <Typography 
               variant="body1" 
               sx={{ 
-                color: theme.palette.text.secondary,
+                color: 'text.secondary',
               }}
             >
               Sign in to your FoodBridge account
@@ -140,27 +123,23 @@ const LoginPage: React.FC = () => {
               sx={{ mb: 2 }}
               InputProps={{
                 sx: {
-                  backgroundColor: theme.palette.background.paper,
+                  backgroundColor: 'background.paper',
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.mode === 'dark' 
-                      ? 'rgba(255,255,255,0.2)' 
-                      : 'rgba(0,0,0,0.2)',
+                    borderColor: '#e0e0e0',
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.mode === 'dark' 
-                      ? 'rgba(255,255,255,0.4)' 
-                      : 'rgba(0,0,0,0.4)',
+                    borderColor: '#e0e0e0',
                   },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.primary.main,
+                    borderColor: 'primary.main',
                   },
                 },
               }}
               InputLabelProps={{
                 sx: {
-                  color: theme.palette.text.secondary,
+                  color: 'text.secondary',
                   '&.Mui-focused': {
-                    color: theme.palette.primary.main,
+                    color: 'primary.main',
                   },
                 },
               }}
@@ -187,27 +166,23 @@ const LoginPage: React.FC = () => {
                   </Button>
                 ),
                 sx: {
-                  backgroundColor: theme.palette.background.paper,
+                  backgroundColor: 'background.paper',
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.mode === 'dark' 
-                      ? 'rgba(255,255,255,0.2)' 
-                      : 'rgba(0,0,0,0.2)',
+                    borderColor: '#e0e0e0',
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.mode === 'dark' 
-                      ? 'rgba(255,255,255,0.4)' 
-                      : 'rgba(0,0,0,0.4)',
+                    borderColor: '#e0e0e0',
                   },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.primary.main,
+                    borderColor: 'primary.main',
                   },
                 },
               }}
               InputLabelProps={{
                 sx: {
-                  color: theme.palette.text.secondary,
+                  color: 'text.secondary',
                   '&.Mui-focused': {
-                    color: theme.palette.primary.main,
+                    color: 'primary.main',
                   },
                 },
               }}
@@ -237,7 +212,7 @@ const LoginPage: React.FC = () => {
               <Typography 
                 variant="body2" 
                 sx={{ 
-                  color: theme.palette.text.secondary,
+                  color: 'text.secondary',
                 }}
               >
                 or
@@ -249,7 +224,7 @@ const LoginPage: React.FC = () => {
                 variant="body2" 
                 sx={{ 
                   mb: 1,
-                  color: theme.palette.text.secondary,
+                  color: 'text.secondary',
                 }}
               >
                 Don't have an account?
@@ -262,11 +237,11 @@ const LoginPage: React.FC = () => {
                   startIcon={<Restaurant />}
                   sx={{
                     fontWeight: 600,
-                    borderColor: theme.palette.primary.main,
-                    color: theme.palette.primary.main,
+                    borderColor: 'primary.main',
+                    color: 'primary.main',
                     '&:hover': {
-                      borderColor: theme.palette.primary.dark,
-                      backgroundColor: theme.palette.primary.main,
+                      borderColor: 'primary.dark',
+                      backgroundColor: 'primary.main',
                       color: 'white',
                     },
                   }}
@@ -283,9 +258,7 @@ const LoginPage: React.FC = () => {
           <Typography 
             variant="body2" 
             sx={{ 
-              color: theme.palette.mode === 'dark' 
-                ? 'rgba(255, 255, 255, 0.7)' 
-                : 'rgba(255, 255, 255, 0.8)',
+              color: '#e0e0e0',
             }}
           >
             Connecting communities through food sharing

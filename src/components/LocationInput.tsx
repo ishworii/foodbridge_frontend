@@ -23,7 +23,6 @@ interface LocationInputProps {
   helperText?: string;
   placeholder?: string;
   error?: boolean;
-  showMap?: boolean;
 }
 
 interface TabPanelProps {
@@ -57,7 +56,6 @@ const LocationInput: React.FC<LocationInputProps> = ({
   helperText,
   placeholder = 'Enter location...',
   error = false,
-  showMap = false,
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [inputValue, setInputValue] = useState('');
@@ -146,7 +144,7 @@ const LocationInput: React.FC<LocationInputProps> = ({
     setInputValue(value);
   }, [value]);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
@@ -172,7 +170,7 @@ const LocationInput: React.FC<LocationInputProps> = ({
     });
   }, []);
 
-  const handleInputChange = (event: React.SyntheticEvent, newInputValue: string) => {
+  const handleInputChange = (_: React.SyntheticEvent, newInputValue: string) => {
     setInputValue(newInputValue);
     if (isGoogleMapsLoaded && newInputValue.length > 2) {
       fetchPlaces(newInputValue);
@@ -291,7 +289,7 @@ const LocationInput: React.FC<LocationInputProps> = ({
               // Since your component's contract is to work with a string `value`,
               // we'll primarily control the component via `inputValue`.
               value={value} // Keep this for display consistency after selection
-              onChange={(event, newValue) => {
+              onChange={(_, newValue) => {
                 // This is called when an option is selected.
                 if (newValue && typeof newValue === 'object' && 'place_id' in newValue) {
                   handlePlaceSelect(newValue.place_id);
@@ -370,13 +368,13 @@ const LocationInput: React.FC<LocationInputProps> = ({
             // Fallback Autocomplete
             <Autocomplete
               value={value}
-              onChange={(event, newValue) => {
+              onChange={(_, newValue) => {
                 if (newValue) {
                   onChange(newValue);
                 }
               }}
               inputValue={inputValue}
-              onInputChange={(e, newInputValue) => setInputValue(newInputValue)}
+              onInputChange={(_, newInputValue) => setInputValue(newInputValue)}
               options={fallbackLocations}
               getOptionLabel={(option) => option}
               isOptionEqualToValue={(option, value) => option === value}
