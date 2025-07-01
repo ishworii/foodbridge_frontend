@@ -1,5 +1,6 @@
 import {
   Add,
+  AdminPanelSettings,
   Brightness4,
   Brightness7,
   ExitToApp,
@@ -75,6 +76,7 @@ const Header: React.FC = () => {
     { path: '/', label: 'Home', icon: <Home /> },
     { path: '/donations', label: 'Donations', icon: <List /> },
     ...(user?.role === 'donor' ? [{ path: '/donations/create', label: 'Create', icon: <Add /> }] : []),
+    ...(user?.is_superuser ? [{ path: '/admin', label: 'Admin', icon: <AdminPanelSettings /> }] : []),
   ];
 
   const renderNavigationItems = () => (

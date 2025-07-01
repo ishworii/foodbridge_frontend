@@ -1,4 +1,5 @@
 import {
+    Brightness4, Brightness7,
     Person,
     Restaurant,
     Visibility,
@@ -11,6 +12,7 @@ import {
     Button,
     Container,
     FormControl,
+    IconButton,
     InputLabel,
     MenuItem,
     Paper,
@@ -21,8 +23,10 @@ import {
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
+import { useTheme as useThemeContext } from '../context/ThemeContext';
 
 const RegisterPage: React.FC = () => {
+  const { mode, toggleTheme } = useThemeContext();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -97,19 +101,13 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        width: '100vw',
-        background: '#e0e0e0',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        py: 4,
-        px: 2,
-        boxSizing: 'border-box',
-      }}
-    >
+    <Box sx={{ minHeight: '100vh', bgcolor: theme => theme.palette.background.default, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+      {/* Theme Toggle Button */}
+      <Box sx={{ position: 'absolute', top: 24, right: 24 }}>
+        <IconButton onClick={toggleTheme} color="inherit">
+          {mode === 'light' ? <Brightness4 /> : <Brightness7 />}
+        </IconButton>
+      </Box>
       <Container maxWidth="sm" sx={{ width: '100%' }}>
         <Paper
           elevation={24}

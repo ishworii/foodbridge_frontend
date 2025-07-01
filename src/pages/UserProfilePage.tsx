@@ -1,26 +1,29 @@
 import {
-    ArrowBack,
-    Category,
-    Edit,
-    TrendingUp
+  ArrowBack,
+  Category,
+  CheckCircle,
+  Edit,
+  Restaurant,
+  TrendingUp
 } from '@mui/icons-material';
 import {
-    Avatar,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    CircularProgress,
-    IconButton,
-    Paper,
-    Tab,
-    Tabs,
-    Typography
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  IconButton,
+  Paper,
+  Tab,
+  Tabs,
+  Typography
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
+import donationService from '../api/donationService';
 import DonationCard from '../components/DonationCard';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -49,6 +52,10 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+function stripHtml(html: string) {
+  return html.replace(/<[^>]+>/g, '');
+}
+
 const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
@@ -56,6 +63,7 @@ const UserProfilePage: React.FC = () => {
   
   const [user, setUser] = useState<User | null>(null);
   const [userDonations, setUserDonations] = useState<Donation[]>([]);
+  const [userClaimedDonations, setUserClaimedDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tabValue, setTabValue] = useState(0);
@@ -66,6 +74,7 @@ const UserProfilePage: React.FC = () => {
     if (userId) {
       fetchUserProfile();
       fetchUserDonations();
+      fetchUserClaimedDonations();
     }
   }, [userId]);
 
@@ -90,6 +99,21 @@ const UserProfilePage: React.FC = () => {
     }
   };
 
+  const fetchUserClaimedDonations = async () => {
+    try {
+      // Only fetch claimed donations for the current user if viewing their own profile
+      if (!userId) return;
+      if (isOwnProfile) {
+        const claimedDonations = await donationService.getClaimedDonationsByUser(parseInt(userId));
+        setUserClaimedDonations(claimedDonations);
+      } else {
+        setUserClaimedDonations([]);
+      }
+    } catch (err: any) {
+      console.error('Failed to load user claimed donations:', err);
+    }
+  };
+
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
@@ -99,6 +123,16 @@ const UserProfilePage: React.FC = () => {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -118,6 +152,35 @@ const UserProfilePage: React.FC = () => {
       foodTypes[type] = (foodTypes[type] || 0) + 1;
     });
     return foodTypes;
+  };
+
+  const getAllActivities = () => {
+    const activities: Array<{
+      type: 'created' | 'claimed';
+      donation: Donation;
+      date: string;
+      title: string;
+    }> = [];
+
+    userDonations.forEach(donation => {
+      activities.push({
+        type: 'created',
+        donation,
+        date: donation.created_at,
+        title: `Created donation: ${donation.title}`
+      });
+    });
+
+    userClaimedDonations.forEach(donation => {
+      activities.push({
+        type: 'claimed',
+        donation,
+        date: donation.created_at,
+        title: `Claimed donation: ${donation.title}`
+      });
+    });
+
+    return activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
   if (loading) {
@@ -326,27 +389,74 @@ const UserProfilePage: React.FC = () => {
                     }
                   </Typography>
                   {isOwnProfile && (
-                    <Button
-                      variant="contained"
-                      sx={{ mt: 2 }}
-                      onClick={() => navigate('/donations/create')}
-                    >
-                      Create Your First Donation
-                    </Button>
+                    user?.role === 'donor' && (
+                      <Button
+                        variant="contained"
+                        sx={{ mt: 2 }}
+                        onClick={() => navigate('/donations/create')}
+                      >
+                        Create Your First Donation
+                      </Button>
+                    )
                   )}
                 </Box>
               )}
             </TabPanel>
 
             <TabPanel value={tabValue} index={1}>
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-                  Activity Feed
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Recent activity will be displayed here.
-                </Typography>
-              </Box>
+              {(() => {
+                const activities = getAllActivities();
+                return activities.length > 0 ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {activities.map((activity, index) => (
+                      <Card key={`${activity.type}-${activity.donation.id}-${index}`} sx={{ p: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            bgcolor: activity.type === 'claimed' ? 'success.main' : 'primary.main',
+                            color: 'white'
+                          }}>
+                            {activity.type === 'claimed' ? <CheckCircle /> : <Restaurant />}
+                          </Box>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                              {activity.title}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {stripHtml(activity.donation.description || '').substring(0, 100)}...
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatDateTime(activity.date)}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label={activity.type === 'claimed' ? 'Claimed' : 'Created'}
+                            color={activity.type === 'claimed' ? 'success' : 'primary'}
+                            size="small"
+                          />
+                        </Box>
+                      </Card>
+                    ))}
+                  </Box>
+                ) : (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+                      No Activity Yet
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {isOwnProfile 
+                        ? "You haven't created or claimed any donations yet."
+                        : "This user hasn't created or claimed any donations yet."
+                      }
+                    </Typography>
+                  </Box>
+                );
+              })()}
             </TabPanel>
           </Paper>
         </Box>

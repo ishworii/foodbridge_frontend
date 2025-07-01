@@ -80,8 +80,24 @@ class DonationService {
   }
 
   // Get a single donation
-  async getDonation(id: number): Promise<Donation> {
+  async getDonationById(id: number): Promise<Donation> {
     const response = await axiosInstance.get(`/donations/${id}/`);
+    return response.data;
+  }
+
+  // Admin methods
+  async getAdminStats(): Promise<any> {
+    const response = await axiosInstance.get('/admin/stats/');
+    return response.data;
+  }
+
+  async getAllDonations(): Promise<Donation[]> {
+    const response = await axiosInstance.get('/admin/donations/');
+    return response.data;
+  }
+
+  async getClaimedDonationsByUser(userId: number): Promise<Donation[]> {
+    const response = await axiosInstance.get(`/donations/claimed_by_user/?user_id=${userId}`);
     return response.data;
   }
 }
