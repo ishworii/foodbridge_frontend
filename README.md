@@ -7,9 +7,10 @@ A modern, beautiful React frontend for the FoodBridge food donation platform. Bu
 - **Modern Design**: Beautiful, responsive UI with Material-UI components
 - **TypeScript**: Full type safety throughout the application
 - **Authentication**: JWT-based authentication with protected routes
-- **Role-based Access**: Different interfaces for donors and receivers
-- **Real-time Updates**: Live donation status updates
-- **Search & Filter**: Advanced filtering and search capabilities
+- **Role-based Access**: Different interfaces for donors, receivers, and admins
+- **Admin Dashboard**: Platform statistics, donation management, and user monitoring
+- **Activity Tab**: Users see only their own activity (created/claimed donations)
+- **Theme Toggle**: Switch between dark and light mode on any page (including login/register)
 - **Responsive Design**: Works perfectly on all device sizes
 
 ## 🚀 Getting Started
@@ -40,82 +41,12 @@ A modern, beautiful React frontend for the FoodBridge food donation platform. Bu
 ```
 src/
 ├── components/          # Reusable UI components
-│   ├── Header.tsx      # Navigation header
-│   ├── Layout.tsx      # Main layout wrapper
-│   ├── DonationCard.tsx # Individual donation display
-│   ├── DonationForm.tsx # Create/edit donation form
-│   ├── LoadingSpinner.tsx # Loading states
-│   └── ProtectedRoute.tsx # Route protection
-├── pages/              # Page components
-│   ├── DonationPage.tsx # Main donations listing
-│   ├── LoginPage.tsx   # Authentication
-│   └── RegisterPage.tsx # User registration
-├── context/            # React context providers
-│   └── AuthContext.tsx # Authentication state
-├── api/                # API utilities
-│   └── axiosInstance.ts # Axios configuration
-├── types.ts            # TypeScript type definitions
-└── App.tsx             # Main application component
+├── pages/               # Page components (Login, Register, Dashboard, Profile, etc.)
+├── context/             # React context providers (Auth, Theme)
+├── api/                 # API utilities (axiosInstance, donationService)
+├── types.ts             # TypeScript type definitions
+└── App.tsx              # Main application component
 ```
-
-## 🎯 Key Components
-
-### DonationCard
-Modern card component displaying donation information with:
-- Status badges (Available/Claimed)
-- Role-based action buttons
-- Responsive design
-- Hover effects
-
-### DonationForm
-Modal form for creating and editing donations with:
-- Form validation
-- Real-time feedback
-- Responsive layout
-- Loading states
-
-### Header
-Navigation header with:
-- User authentication status
-- Role-based navigation
-- Modern gradient design
-- User menu
-
-## 🎨 Design System
-
-### Color Palette
-- **Primary**: Modern blue (#1976d2)
-- **Secondary**: Warm orange (#ff6b35)
-- **Success**: Green (#2e7d32)
-- **Background**: Light gray (#f5f5f5)
-
-### Typography
-- **Font**: Inter (Google Fonts)
-- **Weights**: 300, 400, 500, 600, 700
-- **Responsive**: Scales appropriately across devices
-
-### Components
-- **Cards**: Elevated with hover effects
-- **Buttons**: Modern styling with gradients
-- **Forms**: Clean, accessible design
-- **Navigation**: Intuitive and responsive
-
-## 🔧 Development
-
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-
-### Code Style
-
-- TypeScript for type safety
-- Functional components with hooks
-- Material-UI for consistent design
-- Responsive design patterns
-- Accessibility best practices
 
 ## 🌟 User Experience
 
@@ -131,11 +62,21 @@ Navigation header with:
 - Claim donations
 - View claimed donations
 
+### For Admins
+- Access the admin dashboard via the "Admin" link (superusers only)
+- View platform statistics
+- Manage all donations (edit/delete)
+- Monitor user activity
+
 ### Authentication
 - Secure login/logout
 - Protected routes
 - JWT token management
 - Automatic redirects
+
+## 🎨 Theming
+- **Dark/Light Mode**: Toggle theme using the sun/moon icon in the top-right corner of every page, including login and register
+- **Theme is global**: Applies to all pages and components
 
 ## 🔗 API Integration
 

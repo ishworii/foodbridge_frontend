@@ -3,6 +3,7 @@ export interface User{
     username : string;
     email  : string;
     role : 'donor' | 'receiver';
+    is_superuser: boolean;
     date_joined: string;
     last_login?: string;
     avatar_url?: string;

@@ -1,21 +1,21 @@
 import {
-  AccessTime,
-  CheckCircle,
-  Delete,
-  Edit,
-  LocationOn,
-  Restaurant
+    AccessTime,
+    CheckCircle,
+    Delete,
+    Edit,
+    LocationOn,
+    Restaurant
 } from '@mui/icons-material';
 import {
-  Box,
-  Button,
-  Card,
-  CardActions,
-  CardContent,
-  Chip,
-  IconButton,
-  Tooltip,
-  Typography,
+    Box,
+    Button,
+    Card,
+    CardActions,
+    CardContent,
+    Chip,
+    IconButton,
+    Tooltip,
+    Typography,
 } from '@mui/material';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +27,7 @@ interface DonationCardProps {
   onClaim: (id: number) => void;
   onEdit?: (id: number) => void;
   onDelete?: (donation: Donation) => void;
+  showAdminActions?: boolean;
 }
 
 const DonationCard: React.FC<DonationCardProps> = ({
@@ -34,6 +35,7 @@ const DonationCard: React.FC<DonationCardProps> = ({
   onClaim,
   onEdit,
   onDelete,
+  showAdminActions = false,
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -246,8 +248,8 @@ const DonationCard: React.FC<DonationCardProps> = ({
             </Button>
           )}
 
-          {/* Edit/Delete for Donors */}
-          {user?.role === 'donor' && user.id === donation.donor && (
+          {/* Edit/Delete for Donors or Admin */}
+          {(user?.role === 'donor' && user.id === donation.donor) || showAdminActions ? (
             <>
               {onEdit && (
                 <Tooltip title="Edit donation">
@@ -286,7 +288,7 @@ const DonationCard: React.FC<DonationCardProps> = ({
                 </Tooltip>
               )}
             </>
-          )}
+          ) : null}
 
           {/* Claimed Status */}
           {donation.is_claimed && (
